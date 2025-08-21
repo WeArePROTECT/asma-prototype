@@ -1,0 +1,4 @@
+patient_id,age,sex,condition,cohort
+P001,34,F,Asthma,Case
+P002,29,M,Healthy,Control
+P003,47,F,COPD,Case

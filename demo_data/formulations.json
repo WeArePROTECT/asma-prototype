@@ -1,0 +1,16 @@
+[
+  {
+    "formulation_id":"F001",
+    "organisms":["I001","I004"],
+    "prebiotics":["PB001"],
+    "score_predicted":0.68,
+    "notes":"Complementarity around arginine/sugar pathways; intended to suppress P. aeruginosa (demo)."
+  },
+  {
+    "formulation_id":"F002",
+    "organisms":["I001","I002","I004"],
+    "prebiotics":["PB002"],
+    "score_predicted":0.61,
+    "notes":"Broader coverage of carbohydrate niches; exploratory mix (demo)."
+  }
+]

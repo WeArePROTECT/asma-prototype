@@ -1,0 +1,7 @@
+[
+  {"source_isolate":"I001","target_isolate":"I004","type":"cooccurrence","score":0.62,"evidence":["metaG_abundance_cooccur"]},
+  {"source_isolate":"I003","target_isolate":"I001","type":"competition","score":0.70,"evidence":["pathway_conflict_mock"]},
+  {"source_isolate":"I002","target_isolate":"I004","type":"complementarity","score":0.55,"evidence":["pathway_complement_mock"]},
+  {"source_isolate":"I002","target_isolate":"I003","type":"cooccurrence","score":0.31,"evidence":["metaT_covariance_mock"]},
+  {"source_isolate":"I004","target_isolate":"I003","type":"competition","score":0.48,"evidence":["inferred_resource_overlap_mock"]}
+]

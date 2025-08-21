@@ -1,0 +1,6 @@
+sample_id,patient_id,sample_type,collection_date,project_id
+S001,P001,sputum,2025-06-01,PROTECT
+S002,P001,oral_swab,2025-06-15,PROTECT
+S003,P002,sputum,2025-06-20,PROTECT
+S004,P003,lung_biopsy,2025-07-01,PROTECT
+S005,P003,sputum,2025-07-05,PROTECT

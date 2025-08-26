@@ -28,7 +28,19 @@ function Root() {
   const [searchTerm, setSearchTerm] = useState("");
   const [lineage, setLineage] = useState<any | null>(null);
   const [detailsRow, setDetailsRow] = useState<any | null>(null);
-  const [showNetwork, setShowNetwork] = useState(false);
+
+  // 🚀 Auto-open network via ?net=1
+  const [showNetwork, setShowNetwork] = useState<boolean>(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("net") === "1";
+    } catch { return false; }
+  });
+  // If URL already has a focus, use it on initial open (NetworkView also reads it internally)
+  const initialFocusFromUrl = useMemo(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("focus") || undefined;
+    } catch { return undefined; }
+  }, []);
   const [networkFocusId, setNetworkFocusId] = useState<string | undefined>(undefined);
 
   // Close modals with Esc
@@ -42,6 +54,27 @@ function Root() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  // Keep URL ?net= in sync with modal open/close
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      if (showNetwork) sp.set("net", "1"); else sp.delete("net");
+      const qs = sp.toString();
+      window.history.replaceState({}, "", `${window.location.pathname}${qs ? "?" + qs : ""}${window.location.hash}`);
+    } catch {}
+  }, [showNetwork]);
+
+  // Make Back/Forward toggle the network modal based on URL
+  useEffect(() => {
+    const onPop = () => {
+      try {
+        setShowNetwork(new URLSearchParams(window.location.search).get("net") === "1");
+      } catch {}
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
   }, []);
 
   // hydrate lists
@@ -186,7 +219,7 @@ function Root() {
                 <h2 className="font-semibold text-lg">Isolate Interaction Network</h2>
                 <button className="ml-auto border rounded px-2 py-1" onClick={() => setShowNetwork(false)}>Close</button>
               </div>
-              <NetworkView initialFocusId={networkFocusId} />
+              <NetworkView initialFocusId={networkFocusId ?? initialFocusFromUrl} />
             </div>
           </div>
         )}

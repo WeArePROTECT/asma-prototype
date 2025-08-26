@@ -1,6 +1,6 @@
-
 import { useEffect, useMemo, useState } from "react";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import DataTable from "./components/DataTable";
 import { api } from "./lib/api";
@@ -8,18 +8,50 @@ import SampleAbundance from "./components/SampleAbundance";
 import BinPathways from "./components/BinPathways";
 import BinAbundance from "./components/BinAbundance";
 import NetworkView from "./components/NetworkView";
+import Landing from "./Landing";
+import Footer from "./components/Footer";
 
 const qc = new QueryClient();
-
 export default function App() {
   return (
     <QueryClientProvider client={qc}>
-      <Root />
+      <Shell />
     </QueryClientProvider>
   );
 }
 
 type Entity = "patients" | "samples" | "bins" | "isolates";
+
+function Shell() {
+  const [route, setRoute] = useState<string>(() => window.location.hash || "#/landing");
+  useEffect(() => {
+    const onHash = () => setRoute(window.location.hash || "#/landing");
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+  }, []);
+
+  // Clean ?net when on landing so URL stays tidy
+  useEffect(() => {
+    if ((window.location.hash || "#/landing").startsWith("#/landing")) {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.has("net")) {
+        sp.delete("net");
+        const qs = sp.toString();
+        window.history.replaceState({}, "", `${window.location.pathname}${qs ? "?" + qs : ""}#/landing`);
+      }
+    }
+  }, [route]);
+
+  return (
+    <div className="h-screen flex flex-col">
+      <Header />
+      <div className="flex-1">
+        {route.startsWith("#/landing") ? <Landing /> : <Root />}
+      </div>
+      <Footer />
+    </div>
+  );
+}
 
 function Root() {
   const [selectedEntity, setSelectedEntity] = useState<Entity>("patients");
@@ -31,19 +63,16 @@ function Root() {
 
   // 🚀 Auto-open network via ?net=1
   const [showNetwork, setShowNetwork] = useState<boolean>(() => {
-    try {
-      return new URLSearchParams(window.location.search).get("net") === "1";
-    } catch { return false; }
+    try { return new URLSearchParams(window.location.search).get("net") === "1"; }
+    catch { return false; }
   });
-  // If URL already has a focus, use it on initial open (NetworkView also reads it internally)
   const initialFocusFromUrl = useMemo(() => {
-    try {
-      return new URLSearchParams(window.location.search).get("focus") || undefined;
-    } catch { return undefined; }
+    try { return new URLSearchParams(window.location.search).get("focus") || undefined; }
+    catch { return undefined; }
   }, []);
   const [networkFocusId, setNetworkFocusId] = useState<string | undefined>(undefined);
 
-  // Close modals with Esc
+  // ESC closes overlays
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -56,7 +85,7 @@ function Root() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // Keep URL ?net= in sync with modal open/close
+  // Keep ?net in sync with modal state
   useEffect(() => {
     try {
       const sp = new URLSearchParams(window.location.search);
@@ -66,25 +95,24 @@ function Root() {
     } catch {}
   }, [showNetwork]);
 
-  // Make Back/Forward toggle the network modal based on URL
+  // Back/forward respects ?net
   useEffect(() => {
     const onPop = () => {
-      try {
-        setShowNetwork(new URLSearchParams(window.location.search).get("net") === "1");
-      } catch {}
+      try { setShowNetwork(new URLSearchParams(window.location.search).get("net") === "1"); }
+      catch {}
     };
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
-  // hydrate lists
+  // data
   const patientsQ = useQuery({ queryKey: ["patients"], queryFn: api.patients });
   const samplesQ  = useQuery({ queryKey: ["samples", selectedPatient], queryFn: () => api.samples(selectedPatient) });
   const binsQ     = useQuery({ queryKey: ["bins", selectedSample], queryFn: () => api.bins(selectedSample) });
   const isolatesQ = useQuery({ queryKey: ["isolates"], queryFn: () => api.isolates(), staleTime: 5_000 });
 
   const tableRows = useMemo(() => {
-    if (searchTerm.trim()) return []; // search view handled below
+    if (searchTerm.trim()) return [];
     if (selectedEntity === "patients") return patientsQ.data || [];
     if (selectedEntity === "samples")  return samplesQ.data  || [];
     if (selectedEntity === "bins")     return binsQ.data     || [];
@@ -109,7 +137,6 @@ function Root() {
     return [];
   }, [tableRows, searchQ.data, searchTerm, selectedEntity]);
 
-  // reset dependent selections when entity changes
   useEffect(() => {
     if (selectedEntity === "patients") { setSelectedPatient(undefined); setSelectedSample(undefined); }
     if (selectedEntity === "samples")  { setSelectedSample(undefined); }
@@ -134,7 +161,7 @@ function Root() {
   }
 
   return (
-    <div className="h-screen flex">
+    <div className="h-full flex">
       <Sidebar
         selectedPatient={selectedPatient}
         setSelectedPatient={setSelectedPatient}

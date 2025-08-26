@@ -1,5 +1,5 @@
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useImperativeHandle } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../lib/api";
 
@@ -20,31 +20,7 @@ export default function NetworkView({ initialFocusId }: { initialFocusId?: strin
   const [isolateId, setIsolateId] = useState<string>(initialFocusId || "");
   const [edgeType, setEdgeType] = useState<string>("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
-
-  // Deep-link: read ?focus= & ?type= once
-  useEffect(() => {
-    try {
-      const sp = new URLSearchParams(window.location.search);
-      const qFocus = sp.get("focus");
-      const qType = sp.get("type");
-      if (!initialFocusId && qFocus) setIsolateId(qFocus);
-      if (qType !== null) setEdgeType(qType || "");
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Deep-link: write to URL on change
-  useEffect(() => {
-    try {
-      const sp = new URLSearchParams(window.location.search);
-      if (isolateId) sp.set("focus", isolateId); else sp.delete("focus");
-      if (edgeType) sp.set("type", edgeType); else sp.delete("type");
-      sp.set("net", "1"); // signal network view is open
-      const qs = sp.toString();
-      const newUrl = `${window.location.pathname}${qs ? "?" + qs : ""}${window.location.hash}`;
-      window.history.replaceState({}, "", newUrl);
-    } catch {}
-  }, [isolateId, edgeType]);
+  const [showLegend, setShowLegend] = useState<boolean>(true);
 
   useEffect(() => {
     if (initialFocusId) setIsolateId(initialFocusId);
@@ -63,9 +39,36 @@ export default function NetworkView({ initialFocusId }: { initialFocusId?: strin
     return list.find((it: any) => it.isolate_id === selectedId || it.id === selectedId) || { id: selectedId, isolate_id: selectedId, label: selectedId };
   }, [selectedId, isolatesQ.data]);
 
+  // ref to call export from NetCanvas
+  const canvasHandle = useRef<CanvasHandle | null>(null);
+
+  async function onExportPNG() {
+    if (!canvasHandle.current) return;
+    const blob = await canvasHandle.current.exportPNG(2); // 2x for print-ready
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const ts = new Date().toISOString().replace(/[:.]/g, "-");
+    a.download = `network-${ts}.png`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  async function onExportSVG() {
+    if (!canvasHandle.current) return;
+    const svg = canvasHandle.current.exportSVG();
+    const blob = new Blob([svg], { type: "image/svg+xml;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const ts = new Date().toISOString().replace(/[:.]/g, "-");
+    a.download = `network-${ts}.svg`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   return (
     <div className="net-wrap">
-      <div className="net-toolbar">
+      <div className="net-toolbar" style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
         <div className="group">
           <label>Isolate focus</label>
           <input
@@ -83,8 +86,14 @@ export default function NetworkView({ initialFocusId }: { initialFocusId?: strin
             <option value="inhibition">inhibition</option>
           </select>
         </div>
-        <div className="group" style={{ marginLeft: "auto" }}>
-          <Legend />
+        <label style={{ display: "flex", alignItems: "center", gap: 6, userSelect: "none" }}>
+          <input type="checkbox" checked={showLegend} onChange={(e) => setShowLegend(e.target.checked)} />
+          Show legend
+        </label>
+        <div className="group" style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
+          {showLegend && <Legend />}
+          <button className="border rounded px-2 py-1" onClick={onExportPNG} title="Download PNG">Export PNG</button>
+          <button className="border rounded px-2 py-1" onClick={onExportSVG} title="Download SVG">Export SVG</button>
         </div>
         <div className="muted">
           {q.isLoading ? "Loading…" : q.error ? "Failed to load network" : `${q.data?.nodes?.length ?? 0} nodes, ${q.data?.edges?.length ?? 0} edges`}
@@ -92,6 +101,7 @@ export default function NetworkView({ initialFocusId }: { initialFocusId?: strin
       </div>
 
       <NetCanvas
+        ref={canvasHandle}
         data={q.data}
         focusId={isolateId || undefined}
         onClickNode={(id) => { setSelectedId(id); setIsolateId(id); }}
@@ -190,19 +200,29 @@ type HoverState =
   | { kind: "edge"; id: string; x: number; y: number; source: string; target: string; type?: string; score?: number }
   | null;
 
-function NetCanvas({
-  data,
-  focusId,
-  onClickNode,
-  isolates,
-  edgeType,
-}: {
-  data: any;
-  focusId?: string;
-  onClickNode?: (id: string) => void;
-  isolates: any[];
-  edgeType: string;
-}) {
+type LabelInfo = { text: string; x: number; y: number; w: number; h: number; sx: number; sy: number; anchor: string };
+
+type CanvasHandle = {
+  exportPNG(scale: number): Promise<Blob>;
+  exportSVG(): string;
+};
+
+const NetCanvas = React.forwardRef(function NetCanvas(
+  {
+    data,
+    focusId,
+    onClickNode,
+    isolates,
+    edgeType,
+  }: {
+    data: any;
+    focusId?: string;
+    onClickNode?: (id: string) => void;
+    isolates: any[];
+    edgeType: string;
+  },
+  ref: React.Ref<CanvasHandle | null>
+) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
@@ -220,10 +240,12 @@ function NetCanvas({
   const downPosRef = useRef<{ x: number; y: number } | null>(null);
   const downNodeRef = useRef<string | null>(null);
 
+  const labelsRef = useRef<LabelInfo[]>([]); // last placed labels (CSS coords)
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const dpr = Math.max(1, (window.devicePixelRatio as number) || 1);
     dprRef.current = dpr;
     canvas.style.width = `${CSS_WIDTH}px`;
     canvas.style.height = `${CSS_HEIGHT}px`;
@@ -293,6 +315,112 @@ function NetCanvas({
     } catch {}
   }
 
+  function rectsOverlap(a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }) {
+    return !(a.x + a.w < b.x || b.x + b.w < a.x || a.y + a.h < b.y || b.y + b.h < a.y);
+  }
+
+  // --- Draw one frame (no physics) ---
+  function renderScene(ctx: CanvasRenderingContext2D, dpr: number, s: number, tx: number, ty: number) {
+    const RADIUS = 10;
+    // clear
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, CSS_WIDTH, CSS_HEIGHT);
+
+    // transform
+    ctx.setTransform(dpr * s, 0, 0, dpr * s, dpr * tx, dpr * ty);
+
+    // edges
+    for (const e of edges) {
+      const a = nodeById.get(e.source);
+      const b = nodeById.get(e.target);
+      if (!a || !b) continue;
+      const score = Math.max(0, Math.min(1, e.score ?? 0.6));
+      ctx.beginPath();
+      ctx.lineWidth = 0.5 + score * 2.5;
+      ctx.strokeStyle = EDGE_COLORS[e.type || ""] || EDGE_COLORS[""];
+      ctx.globalAlpha = 0.25 + score * 0.75;
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+
+    // nodes
+    for (const n of nodes) {
+      const isFocus = !!focusId && n.id === focusId;
+      const isHover = hoverIdRef.current === n.id;
+      ctx.beginPath();
+      ctx.fillStyle = isFocus ? "#2563eb" : isHover ? "#111" : "#444";
+      ctx.arc(n.x, n.y, isFocus ? 12 : 10, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // labels (CSS coords; collision-aware)
+    ctx.save();
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.font = "12px ui-sans-serif, system-ui";
+    ctx.fillStyle = "#000";
+    ctx.textAlign = "left";
+
+    const nodeBoxes = nodes.map((n) => {
+      const sx = n.x * s + tx;
+      const sy = n.y * s + ty;
+      const rr = 12 * s;
+      return { x: sx - rr, y: sy - rr, w: rr * 2, h: rr * 2, cx: sx, cy: sy, n };
+    });
+
+    const placed: LabelInfo[] = [];
+    function placeLabelFor(n: NetNode, text: string) {
+      const sx = n.x * s + tx;
+      const sy = n.y * s + ty;
+      const w = ctx.measureText(text).width;
+      const h = 14;
+      const gap = 10, pad = 2;
+
+      const candidates = [
+        { x: sx + gap, y: sy - h / 2, name: "right" },
+        { x: sx - gap - w, y: sy - h / 2, name: "left" },
+        { x: sx - w / 2, y: sy - gap - h, name: "top" },
+        { x: sx - w / 2, y: sy + gap, name: "bottom" },
+        { x: sx + gap, y: sy - gap - h, name: "top-right" },
+        { x: sx + gap, y: sy + gap, name: "bottom-right" },
+        { x: sx - gap - w, y: sy - gap - h, name: "top-left" },
+        { x: sx - gap - w, y: sy + gap, name: "bottom-left" },
+      ];
+
+      for (const c of candidates) {
+        const rect = { x: c.x - pad, y: c.y - pad, w: w + 2 * pad, h: h + 2 * pad };
+        let ok = nodeBoxes.every((nb) => !rectsOverlap(rect, { x: nb.x, y: nb.y, w: nb.w, h: nb.h }));
+        if (!ok) continue;
+        ok = placed.every((pb) => !rectsOverlap(rect, pb));
+        if (!ok) continue;
+
+        if (c.name !== "right") {
+          ctx.beginPath();
+          ctx.strokeStyle = "#c7c7c7";
+          ctx.lineWidth = 1;
+          ctx.moveTo(sx, sy);
+          const lx = Math.max(rect.x, Math.min(sx, rect.x + rect.w));
+          const ly = Math.max(rect.y, Math.min(sy, rect.y + rect.h));
+          ctx.lineTo(lx, ly);
+          ctx.stroke();
+        }
+        ctx.fillText(text, c.x, c.y + h - 4);
+        placed.push({ text, x: c.x, y: c.y, w, h, sx, sy, anchor: c.name });
+        return;
+      }
+
+      ctx.fillText(text, sx + gap, sy + h / 2 - 4);
+      placed.push({ text, x: sx + gap, y: sy - h / 2, w, h, sx, sy, anchor: "right" });
+    }
+
+    for (const n of nodes) placeLabelFor(n, n.label || n.id);
+
+    labelsRef.current = placed;
+    ctx.restore();
+  }
+
+  // Physics + animate; then renderScene each frame
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = ctxRef.current;
@@ -304,17 +432,12 @@ function NetCanvas({
     const LINK_DIST = 120;
     const FRICTION = 0.85;
     const DT = 0.5;
-    const RADIUS = 10;
-
-    function rectsOverlap(a: { x: number; y: number; w: number; h: number }, b: { x: number; y: number; w: number; h: number }) {
-      return !(a.x + a.w < b.x || b.x + b.w < a.x || a.y + a.h < b.y || b.y + b.h < a.y);
-    }
 
     function step() {
-      const dpr = dprRef.current;
       const s = scaleRef.current;
       const tx = txRef.current;
       const ty = tyRef.current;
+      const dpr = dprRef.current;
 
       // repulsion
       for (let i = 0; i < nodes.length; i++) {
@@ -334,7 +457,6 @@ function NetCanvas({
           b.vy -= f * dy * DT;
         }
       }
-
       // springs
       for (const e of edges) {
         const a = nodeById.get(e.source);
@@ -345,129 +467,28 @@ function NetCanvas({
         let dist = Math.max(1, Math.sqrt(dx * dx + dy * dy));
         let diff = dist - LINK_DIST;
         let f = K_SPR * diff;
-        let nx = dx / dist,
-          ny = dy / dist;
+        let nx = dx / dist, ny = dy / dist;
         a.vx += f * nx * DT;
         a.vy += f * ny * DT;
         b.vx -= f * nx * DT;
         b.vy -= f * ny * DT;
       }
-
-      // integrate
+      // integrate + bounds
       for (const n of nodes) {
         if (n.id === dragIdRef.current) {
-          n.vx = 0;
-          n.vy = 0;
+          n.vx = 0; n.vy = 0;
         } else {
           n.vx *= FRICTION;
           n.vy *= FRICTION;
           n.x += n.vx;
           n.y += n.vy;
-          n.x = Math.max(RADIUS, Math.min(CSS_WIDTH - RADIUS, n.x));
-          n.y = Math.max(RADIUS, Math.min(CSS_HEIGHT - RADIUS, n.y));
+          n.x = Math.max(10, Math.min(CSS_WIDTH - 10, n.x));
+          n.y = Math.max(10, Math.min(CSS_HEIGHT - 10, n.y));
         }
       }
 
-      // clear
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, CSS_WIDTH, CSS_HEIGHT);
-
-      // transform
-      ctx.setTransform(dpr * s, 0, 0, dpr * s, dpr * tx, dpr * ty);
-
-      // edges with weight
-      for (const e of edges) {
-        const a = nodeById.get(e.source);
-        const b = nodeById.get(e.target);
-        if (!a || !b) continue;
-        const score = Math.max(0, Math.min(1, e.score ?? 0.6));
-        ctx.beginPath();
-        ctx.lineWidth = 0.5 + score * 2.5;
-        ctx.strokeStyle = EDGE_COLORS[e.type || ""] || EDGE_COLORS[""];
-        ctx.globalAlpha = 0.25 + score * 0.75;
-        ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x, b.y);
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-
-      // nodes
-      for (const n of nodes) {
-        const isFocus = !!focusId && n.id === focusId;
-        const isHover = hoverIdRef.current === n.id;
-        ctx.beginPath();
-        ctx.fillStyle = isFocus ? "#2563eb" : isHover ? "#111" : "#444";
-        ctx.arc(n.x, n.y, isFocus ? 12 : 10, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // labels (collision-aware in CSS px)
-      ctx.save();
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.font = "12px ui-sans-serif, system-ui";
-      ctx.fillStyle = "#000";
-      ctx.textAlign = "left";
-
-      const nodeBoxes = nodes.map((n) => {
-        const sx = n.x * s + tx;
-        const sy = n.y * s + ty;
-        const rr = 12 * s;
-        return { x: sx - rr, y: sy - rr, w: rr * 2, h: rr * 2, cx: sx, cy: sy };
-      });
-
-      const placed: Array<{ x: number; y: number; w: number; h: number }> = [];
-
-      function placeLabelFor(n: NetNode, text: string) {
-        const sx = n.x * s + tx;
-        const sy = n.y * s + ty;
-        const w = ctx.measureText(text).width;
-        const h = 14;
-        const gap = 10,
-          pad = 2;
-
-        const candidates = [
-          { x: sx + gap, y: sy - h / 2, name: "right" },
-          { x: sx - gap - w, y: sy - h / 2, name: "left" },
-          { x: sx - w / 2, y: sy - gap - h, name: "top" },
-          { x: sx - w / 2, y: sy + gap, name: "bottom" },
-          { x: sx + gap, y: sy - gap - h, name: "top-right" },
-          { x: sx + gap, y: sy + gap, name: "bottom-right" },
-          { x: sx - gap - w, y: sy - gap - h, name: "top-left" },
-          { x: sx - gap - w, y: sy + gap, name: "bottom-left" },
-        ];
-
-        for (const c of candidates) {
-          const rect = { x: c.x - pad, y: c.y - pad, w: w + 2 * pad, h: h + 2 * pad };
-          let ok = nodeBoxes.every((nb) => !rectsOverlap(rect, { x: nb.x, y: nb.y, w: nb.w, h: nb.h }));
-          if (!ok) continue;
-          ok = placed.every((pb) => !rectsOverlap(rect, pb));
-          if (!ok) continue;
-
-          if (c.name !== "right") {
-            ctx.beginPath();
-            ctx.strokeStyle = "#c7c7c7";
-            ctx.lineWidth = 1;
-            ctx.moveTo(sx, sy);
-            const lx = Math.max(rect.x, Math.min(sx, rect.x + rect.w));
-            const ly = Math.max(rect.y, Math.min(sy, rect.y + rect.h));
-            ctx.lineTo(lx, ly);
-            ctx.stroke();
-          }
-
-          ctx.fillText(text, c.x, c.y + h - 4);
-          placed.push(rect);
-          return;
-        }
-
-        ctx.fillText(text, sx + gap, sy + h / 2 - 4);
-        placed.push({ x: sx + gap, y: sy - h / 2, w, h });
-      }
-
-      for (const n of nodes) {
-        placeLabelFor(n, n.label || n.id);
-      }
-
-      ctx.restore();
+      // draw
+      renderScene(ctx, dpr, s, tx, ty);
       raf = requestAnimationFrame(step);
     }
 
@@ -487,19 +508,15 @@ function NetCanvas({
     const ty = tyRef.current;
     return { x: (xCss - tx) / s, y: (yCss - ty) / s };
   }
-
   function pointToSegDist(px: number, py: number, ax: number, ay: number, bx: number, by: number) {
-    const vx = bx - ax,
-      vy = by - ay;
-    const wx = px - ax,
-      wy = py - ay;
+    const vx = bx - ax, vy = by - ay;
+    const wx = px - ax, wy = py - ay;
     const c1 = vx * wx + vy * wy;
     if (c1 <= 0) return Math.hypot(px - ax, py - ay);
     const c2 = vx * vx + vy * vy;
     if (c2 <= c1) return Math.hypot(px - bx, py - by);
     const t = c1 / c2;
-    const projx = ax + t * vx,
-      projy = ay + t * vy;
+    const projx = ax + t * vx, projy = ay + t * vy;
     return Math.hypot(px - projx, py - projy);
   }
 
@@ -512,10 +529,7 @@ function NetCanvas({
       let bestD = 1e9;
       for (const n of nodes) {
         const d = Math.hypot(n.x - mx, n.y - my);
-        if (d < bestD && d < 18) {
-          best = n;
-          bestD = d;
-        }
+        if (d < bestD && d < 18) { best = n; bestD = d; }
       }
       return best;
     }
@@ -542,13 +556,9 @@ function NetCanvas({
         e.preventDefault();
         return;
       }
-
       if (n) {
         dragIdRef.current = n.id;
-        n.x = mx;
-        n.y = my;
-        n.vx = 0;
-        n.vy = 0;
+        n.x = mx; n.y = my; n.vx = 0; n.vy = 0;
         canvas.setPointerCapture?.(e.pointerId);
         e.preventDefault();
       }
@@ -560,12 +570,7 @@ function NetCanvas({
 
       if (dragIdRef.current) {
         const n = nodes.find((nd) => nd.id === dragIdRef.current);
-        if (n) {
-          n.x = mx;
-          n.y = my;
-          n.vx = 0;
-          n.vy = 0;
-        }
+        if (n) { n.x = mx; n.y = my; n.vx = 0; n.vy = 0; }
       } else if (e.buttons === 2) {
         const prev = downPosRef.current;
         if (prev) {
@@ -656,6 +661,74 @@ function NetCanvas({
     };
   }, [nodes, edges, storageKey, onClickNode]);
 
+  // Exports
+  useImperativeHandle(ref, () => ({
+    async exportPNG(scale: number) {
+      const s = scaleRef.current, tx = txRef.current, ty = tyRef.current;
+      const off = document.createElement("canvas");
+      const dpr = Math.max(1, scale || 1);
+      off.width = Math.round(CSS_WIDTH * dpr);
+      off.height = Math.round(CSS_HEIGHT * dpr);
+      const octx = off.getContext("2d");
+      if (!octx) throw new Error("No 2D context");
+      // white background
+      octx.fillStyle = "#ffffff";
+      octx.fillRect(0, 0, off.width, off.height);
+      renderScene(octx as any, dpr, s, tx, ty);
+      return new Promise<Blob>((resolve) => off.toBlob((blob) => resolve(blob as Blob), "image/png"));
+    },
+    exportSVG() {
+      const s = scaleRef.current, tx = txRef.current, ty = tyRef.current;
+      const labels = labelsRef.current || [];
+      function esc(t: string) { return t.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+      let svg = '';
+      svg += `<svg xmlns="http://www.w3.org/2000/svg" width="${CSS_WIDTH}" height="${CSS_HEIGHT}" viewBox="0 0 ${CSS_WIDTH} ${CSS_HEIGHT}">`;
+      svg += `<rect width="100%" height="100%" fill="#ffffff"/>`;
+
+      // edges
+      for (const e of edges) {
+        const a = nodeById.get(e.source);
+        const b = nodeById.get(e.target);
+        if (!a || !b) continue;
+        const score = Math.max(0, Math.min(1, e.score ?? 0.6));
+        const x1 = a.x * s + tx, y1 = a.y * s + ty;
+        const x2 = b.x * s + tx, y2 = b.y * s + ty;
+        const color = EDGE_COLORS[e.type || ""] || EDGE_COLORS[""];
+        const strokeWidth = 0.5 + score * 2.5;
+        const opacity = 0.25 + score * 0.75;
+        svg += `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="${color}" stroke-opacity="${opacity.toFixed(2)}" stroke-width="${strokeWidth.toFixed(2)}" />`;
+      }
+
+      // nodes
+      for (const n of nodes) {
+        const isFocus = !!focusId && n.id === focusId;
+        const fill = isFocus ? "#2563eb" : "#444444";
+        const cx = n.x * s + tx;
+        const cy = n.y * s + ty;
+        const r = isFocus ? 12 : 10;
+        svg += `<circle cx="${cx.toFixed(2)}" cy="${cy.toFixed(2)}" r="${r}" fill="${fill}" />`;
+      }
+
+      // labels + leader lines (based on last placement)
+      for (const lb of labels) {
+        if (lb.anchor !== "right") {
+          const rect = { x: lb.x, y: lb.y, w: lb.w, h: lb.h };
+          const sx = lb.sx, sy = lb.sy;
+          const lx = Math.max(rect.x, Math.min(sx, rect.x + rect.w));
+          const ly = Math.max(rect.y, Math.min(sy, rect.y + rect.h));
+          svg += `<line x1="${sx.toFixed(2)}" y1="${sy.toFixed(2)}" x2="${lx.toFixed(2)}" y2="${ly.toFixed(2)}" stroke="#c7c7c7" stroke-width="1"/>`;
+        }
+        const txX = lb.x;
+        const txY = lb.y + lb.h - 4;
+        svg += `<text x="${txX.toFixed(2)}" y="${txY.toFixed(2)}" font-size="12" font-family="ui-sans-serif, system-ui" fill="#000000">${esc(lb.text)}</text>`;
+      }
+
+      svg += `</svg>`;
+      return svg;
+    }
+  }), [edges, nodeById, focusId]);
+
   const tooltip = useMemo(() => {
     if (!hover) return null;
     const s = scaleRef.current;
@@ -679,12 +752,9 @@ function NetCanvas({
       const sc = hover.score != null ? `score: ${hover.score}` : "";
       return (
         <div style={tooltipStyle(x, y)}>
-          <div style={{ fontWeight: 600 }}>
-            {sLabel} ↔ {tLabel}
-          </div>
+          <div style={{ fontWeight: 600 }}>{sLabel} ↔ {tLabel}</div>
           <div style={{ fontSize: 12 }}>
-            type: <span style={{ color: EDGE_COLORS[ty] || "#333" }}>{ty}</span>
-            {sc ? ` — ${sc}` : ""}
+            type: <span style={{ color: EDGE_COLORS[ty] || "#333" }}>{ty}</span>{sc ? ` — ${sc}` : ""}
           </div>
         </div>
       );
@@ -695,8 +765,8 @@ function NetCanvas({
     <div ref={containerRef} style={{ position: "relative", width: CSS_WIDTH, height: CSS_HEIGHT }}>
       <canvas
         ref={canvasRef}
-        width={Math.round(CSS_WIDTH * Math.max(1, window.devicePixelRatio || 1))}
-        height={Math.round(CSS_HEIGHT * Math.max(1, window.devicePixelRatio || 1))}
+        width={Math.round(CSS_WIDTH * Math.max(1, (window.devicePixelRatio as number) || 1))}
+        height={Math.round(CSS_HEIGHT * Math.max(1, (window.devicePixelRatio as number) || 1))}
         className="net-canvas"
         style={{
           width: `${CSS_WIDTH}px`,
@@ -710,7 +780,7 @@ function NetCanvas({
       {tooltip}
     </div>
   );
-}
+});
 
 function tooltipStyle(x: number, y: number): React.CSSProperties {
   return {

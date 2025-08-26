@@ -1,3 +1,4 @@
+
 // src/components/DataTable.tsx
 import { useMemo } from "react";
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
@@ -5,17 +6,18 @@ import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack
 type Props = {
   rows: any[];
   onOpenLineage?: (row: any) => void;
-  onRowDetails?: (row: any) => void;   // Optional: opens details drawer on row click
+  onRowDetails?: (row: any) => void;   // Optional: opens details drawer on row click (samples/bins)
+  onOpenNetworkWithFocus?: (isolateId: string) => void; // Optional: isolates -> open network
   entity: "patients" | "samples" | "bins" | "isolates";
 };
 
-export default function DataTable({ rows, onOpenLineage, onRowDetails, entity }: Props) {
+export default function DataTable({ rows, onOpenLineage, onRowDetails, onOpenNetworkWithFocus, entity }: Props) {
   const cols = useMemo<ColumnDef<any>[]>(() => {
     const keys = new Set<string>();
     rows?.forEach((r) => Object.keys(r || {}).forEach((k) => keys.add(k)));
     const ordered = Array.from(keys);
     // bubble id-like fields to the front
-    const idOrder = ["patient_id", "sample_id", "bin_id", "isolate_id"];
+    const idOrder = ["patient_id", "sample_id", "bin_id", "isolate_id", "id"];
     ordered.sort((a, b) => (idOrder.indexOf(a) + 999) - (idOrder.indexOf(b) + 999));
 
     const baseCols = ordered.slice(0, 8).map((k) => ({
@@ -28,7 +30,7 @@ export default function DataTable({ rows, onOpenLineage, onRowDetails, entity }:
       },
     })) as ColumnDef<any>[];
 
-    // lineage button (per entity where it makes sense)
+    // lineage button (patients + samples)
     const showLineage = entity === "patients" || entity === "samples";
     if (showLineage) {
       baseCols.unshift({
@@ -38,7 +40,7 @@ export default function DataTable({ rows, onOpenLineage, onRowDetails, entity }:
           <button
             className="text-blue-600 underline"
             onClick={(e) => {
-              e.stopPropagation();           // prevent row click from opening details drawer
+              e.stopPropagation();
               onOpenLineage?.(row.original);
             }}
           >
@@ -55,6 +57,17 @@ export default function DataTable({ rows, onOpenLineage, onRowDetails, entity }:
     columns: cols,
     getCoreRowModel: getCoreRowModel(),
   });
+
+  function handleRowClick(original: any) {
+    if (entity === "samples" || entity === "bins") {
+      onRowDetails?.(original);
+    } else if (entity === "isolates" && onOpenNetworkWithFocus) {
+      const iso = original.isolate_id || original.id;
+      if (iso) onOpenNetworkWithFocus(iso);
+    }
+  }
+
+  const clickable = (entity === "samples" || entity === "bins" || (entity === "isolates" && !!onOpenNetworkWithFocus));
 
   return (
     <div className="overflow-auto">
@@ -75,14 +88,9 @@ export default function DataTable({ rows, onOpenLineage, onRowDetails, entity }:
             <tr
               key={r.id}
               className={
-                "odd:bg-gray-50 " +
-                (["samples", "bins"].includes(entity) && onRowDetails
-                  ? "cursor-pointer hover:bg-gray-100"
-                  : "")
+                "odd:bg-gray-50 " + (clickable ? "cursor-pointer hover:bg-gray-100" : "")
               }
-              onClick={() => {
-                if (["samples", "bins"].includes(entity)) onRowDetails?.(r.original);
-              }}
+              onClick={() => handleRowClick(r.original)}
             >
               {r.getVisibleCells().map((c) => (
                 <td key={c.id} className="px-2 py-1 border-b align-top">

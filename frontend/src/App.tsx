@@ -29,6 +29,7 @@ function Root() {
   const [lineage, setLineage] = useState<any | null>(null);
   const [detailsRow, setDetailsRow] = useState<any | null>(null);
   const [showNetwork, setShowNetwork] = useState(false);
+  const [networkFocusId, setNetworkFocusId] = useState<string | undefined>(undefined);
 
   // Close modals with Esc
   useEffect(() => {
@@ -94,6 +95,11 @@ function Root() {
     a.click();
   };
 
+  function onOpenNetworkWithFocus(id: string) {
+    setNetworkFocusId(id);
+    setShowNetwork(true);
+  }
+
   return (
     <div className="h-screen flex">
       <Sidebar
@@ -122,7 +128,13 @@ function Root() {
         </div>
 
         <div className="border rounded">
-          <DataTable rows={rows} entity={selectedEntity} onOpenLineage={onOpenLineage} onRowDetails={setDetailsRow} />
+          <DataTable
+            rows={rows}
+            entity={selectedEntity}
+            onOpenLineage={onOpenLineage}
+            onRowDetails={setDetailsRow}
+            onOpenNetworkWithFocus={onOpenNetworkWithFocus}
+          />
         </div>
 
         {lineage && (
@@ -174,7 +186,7 @@ function Root() {
                 <h2 className="font-semibold text-lg">Isolate Interaction Network</h2>
                 <button className="ml-auto border rounded px-2 py-1" onClick={() => setShowNetwork(false)}>Close</button>
               </div>
-              <NetworkView />
+              <NetworkView initialFocusId={networkFocusId} />
             </div>
           </div>
         )}

@@ -1,3 +1,4 @@
+
 import { useEffect, useMemo, useState } from "react";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import Sidebar from "./components/Sidebar";
@@ -6,6 +7,7 @@ import { api } from "./lib/api";
 import SampleAbundance from "./components/SampleAbundance";
 import BinPathways from "./components/BinPathways";
 import BinAbundance from "./components/BinAbundance";
+import NetworkView from "./components/NetworkView";
 
 const qc = new QueryClient();
 
@@ -26,6 +28,7 @@ function Root() {
   const [searchTerm, setSearchTerm] = useState("");
   const [lineage, setLineage] = useState<any | null>(null);
   const [detailsRow, setDetailsRow] = useState<any | null>(null);
+  const [showNetwork, setShowNetwork] = useState(false);
 
   // Close modals with Esc
   useEffect(() => {
@@ -33,23 +36,12 @@ function Root() {
       if (e.key === "Escape") {
         setLineage(null);
         setDetailsRow(null);
+        setShowNetwork(false);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
-
-  // Reset drill-ins when entity changes
-  useEffect(() => {
-    setDetailsRow(null);
-    if (selectedEntity === "patients") {
-      setSelectedPatient(undefined);
-      setSelectedSample(undefined);
-    }
-    if (selectedEntity === "samples") {
-      setSelectedSample(undefined);
-    }
-  }, [selectedEntity]);
 
   // hydrate lists
   const patientsQ = useQuery({ queryKey: ["patients"], queryFn: api.patients });
@@ -82,6 +74,12 @@ function Root() {
     if (selectedEntity === "isolates") return b.isolates;
     return [];
   }, [tableRows, searchQ.data, searchTerm, selectedEntity]);
+
+  // reset dependent selections when entity changes
+  useEffect(() => {
+    if (selectedEntity === "patients") { setSelectedPatient(undefined); setSelectedSample(undefined); }
+    if (selectedEntity === "samples")  { setSelectedSample(undefined); }
+  }, [selectedEntity]);
 
   const onOpenLineage = async (row: any) => {
     if (selectedEntity === "patients") setLineage(await api.lineagePatient(row.patient_id));
@@ -118,42 +116,23 @@ function Root() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <button className="border rounded px-3 py-1" onClick={onExport}>
-              Export CSV
-            </button>
+            <button className="border rounded px-3 py-1" onClick={() => setShowNetwork(true)}>Open Network</button>
+            <button className="border rounded px-3 py-1" onClick={onExport}>Export CSV</button>
           </div>
         </div>
 
         <div className="border rounded">
-          <DataTable
-            rows={rows}
-            entity={selectedEntity}
-            onOpenLineage={onOpenLineage}
-            onRowDetails={setDetailsRow}
-          />
+          <DataTable rows={rows} entity={selectedEntity} onOpenLineage={onOpenLineage} onRowDetails={setDetailsRow} />
         </div>
 
         {lineage && (
-          <div
-            className="fixed inset-0 bg-black/40 flex items-center justify-center"
-            onClick={() => setLineage(null)}
-          >
-            <div
-              className="bg-white rounded shadow-lg max-w-4xl w-full max-h-[80vh] overflow-auto p-4"
-              onClick={(e) => e.stopPropagation()}
-            >
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center" onClick={() => setLineage(null)}>
+            <div className="bg-white rounded shadow-lg max-w-4xl w-full max-h-[80vh] overflow-auto p-4" onClick={(e)=>e.stopPropagation()}>
               <div className="flex items-center mb-2">
                 <h2 className="font-semibold text-lg">Lineage</h2>
-                <button
-                  className="ml-auto border rounded px-2 py-1"
-                  onClick={() => setLineage(null)}
-                >
-                  Close
-                </button>
+                <button className="ml-auto border rounded px-2 py-1" onClick={() => setLineage(null)}>Close</button>
               </div>
-              <pre className="text-xs bg-gray-50 p-3 rounded overflow-auto">
-                {JSON.stringify(lineage, null, 2)}
-              </pre>
+              <pre className="text-xs bg-gray-50 p-3 rounded overflow-auto">{JSON.stringify(lineage, null, 2)}</pre>
             </div>
           </div>
         )}
@@ -162,19 +141,9 @@ function Root() {
           <div className="fixed bottom-4 right-4 left-4 md:left-auto md:w-[520px] bg-white border shadow-lg rounded p-4 space-y-3">
             <div className="flex items-center">
               <div className="font-semibold">
-                Details —{" "}
-                {selectedEntity === "samples"
-                  ? detailsRow.sample_id
-                  : selectedEntity === "bins"
-                  ? detailsRow.bin_id
-                  : ""}
+                Details — {selectedEntity === "samples" ? detailsRow.sample_id : selectedEntity === "bins" ? detailsRow.bin_id : ""}
               </div>
-              <button
-                className="ml-auto border rounded px-2 py-1"
-                onClick={() => setDetailsRow(null)}
-              >
-                Close
-              </button>
+              <button className="ml-auto border rounded px-2 py-1" onClick={() => setDetailsRow(null)}>Close</button>
             </div>
 
             {selectedEntity === "samples" && detailsRow?.sample_id && (
@@ -192,11 +161,21 @@ function Root() {
               </>
             )}
 
-            {selectedEntity !== "samples" && selectedEntity !== "bins" && (
-              <div className="text-sm text-gray-500">
-                Select a Sample or Bin to see details.
-              </div>
+            {(selectedEntity !== "samples" && selectedEntity !== "bins") && (
+              <div className="text-sm text-gray-500">Select a Sample or Bin to see details.</div>
             )}
+          </div>
+        )}
+
+        {showNetwork && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center" onClick={() => setShowNetwork(false)}>
+            <div className="bg-white rounded shadow-lg w-[980px] max-w-[96vw] max-h-[90vh] overflow-auto p-4" onClick={(e)=>e.stopPropagation()}>
+              <div className="flex items-center mb-2">
+                <h2 className="font-semibold text-lg">Isolate Interaction Network</h2>
+                <button className="ml-auto border rounded px-2 py-1" onClick={() => setShowNetwork(false)}>Close</button>
+              </div>
+              <NetworkView />
+            </div>
           </div>
         )}
       </main>

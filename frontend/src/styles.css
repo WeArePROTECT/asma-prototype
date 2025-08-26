@@ -20,3 +20,11 @@ button { cursor: pointer; }
 
 .muted { color: #666; }
 .error { color: #b00020; }
+
+/* ===== Network view styles ===== */
+.net-wrap { display: flex; flex-direction: column; gap: 10px; }
+.net-toolbar { display: flex; gap: 12px; align-items: center; font-size: 12px; }
+.net-toolbar .group { display: flex; gap: 6px; align-items: center; }
+.net-toolbar input, .net-toolbar select { border: 1px solid #ddd; padding: 4px 6px; border-radius: 6px; }
+.net-toolbar .muted { color: #666; }
+.net-canvas { border: 1px solid #e5e5e5; border-radius: 8px; display: block; }

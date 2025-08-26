@@ -5,10 +5,11 @@ import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack
 type Props = {
   rows: any[];
   onOpenLineage?: (row: any) => void;
+  onRowDetails?: (row: any) => void;   // Optional: opens details drawer on row click
   entity: "patients" | "samples" | "bins" | "isolates";
 };
 
-export default function DataTable({ rows, onOpenLineage, entity }: Props) {
+export default function DataTable({ rows, onOpenLineage, onRowDetails, entity }: Props) {
   const cols = useMemo<ColumnDef<any>[]>(() => {
     const keys = new Set<string>();
     rows?.forEach((r) => Object.keys(r || {}).forEach((k) => keys.add(k)));
@@ -36,7 +37,10 @@ export default function DataTable({ rows, onOpenLineage, entity }: Props) {
         cell: ({ row }) => (
           <button
             className="text-blue-600 underline"
-            onClick={() => onOpenLineage?.(row.original)}
+            onClick={(e) => {
+              e.stopPropagation();           // prevent row click from opening details drawer
+              onOpenLineage?.(row.original);
+            }}
           >
             Open lineage
           </button>
@@ -68,7 +72,18 @@ export default function DataTable({ rows, onOpenLineage, entity }: Props) {
         </thead>
         <tbody>
           {table.getRowModel().rows.map((r) => (
-            <tr key={r.id} className="odd:bg-gray-50">
+            <tr
+              key={r.id}
+              className={
+                "odd:bg-gray-50 " +
+                (["samples", "bins"].includes(entity) && onRowDetails
+                  ? "cursor-pointer hover:bg-gray-100"
+                  : "")
+              }
+              onClick={() => {
+                if (["samples", "bins"].includes(entity)) onRowDetails?.(r.original);
+              }}
+            >
               {r.getVisibleCells().map((c) => (
                 <td key={c.id} className="px-2 py-1 border-b align-top">
                   {flexRender(c.column.columnDef.cell, c.getContext())}
@@ -77,7 +92,9 @@ export default function DataTable({ rows, onOpenLineage, entity }: Props) {
             </tr>
           ))}
           {!rows?.length && (
-            <tr><td className="p-4 text-gray-500">No rows</td></tr>
+            <tr>
+              <td className="p-4 text-gray-500">No rows</td>
+            </tr>
           )}
         </tbody>
       </table>

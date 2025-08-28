@@ -1,0 +1,6 @@
+source_isolate,target_isolate,type,score,evidence
+I001,I004,cooccurrence,0.62,"[""metaG_abundance_cooccur""]"
+I003,I001,competition,0.7,"[""pathway_conflict_mock""]"
+I002,I004,complementarity,0.55,"[""pathway_complement_mock""]"
+I002,I003,cooccurrence,0.31,"[""metaT_covariance_mock""]"
+I004,I003,competition,0.48,"[""inferred_resource_overlap_mock""]"

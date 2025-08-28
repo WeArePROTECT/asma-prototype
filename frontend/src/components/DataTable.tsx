@@ -1,6 +1,5 @@
-
-// src/components/DataTable.tsx
-import { useMemo } from "react";
+// src/components/DataTable.tsx (SAFE, debounced search, regex-free)
+import React, { useEffect, useMemo, useState } from "react";
 import { ColumnDef, flexRender, getCoreRowModel, useReactTable } from "@tanstack/react-table";
 
 type Props = {
@@ -9,12 +8,53 @@ type Props = {
   onRowDetails?: (row: any) => void;   // Optional: opens details drawer on row click (samples/bins)
   onOpenNetworkWithFocus?: (isolateId: string) => void; // Optional: isolates -> open network
   entity: "patients" | "samples" | "bins" | "isolates";
+  /** Optional search query. If provided, filtering is handled here with debounce + safe includes(). */
+  query?: string;
+  /** Debounce milliseconds for the optional query (default 300ms). */
+  debounceMs?: number;
 };
 
-export default function DataTable({ rows, onOpenLineage, onRowDetails, onOpenNetworkWithFocus, entity }: Props) {
+function toStr(v: any): string {
+  if (v == null) return "";
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  // protect against giant objects
+  try { return JSON.stringify(v); } catch { return ""; }
+}
+
+export default function DataTable({
+  rows,
+  onOpenLineage,
+  onRowDetails,
+  onOpenNetworkWithFocus,
+  entity,
+  query,
+  debounceMs = 300,
+}: Props) {
+  // Debounce the incoming query (if provided)
+  const [qLive, setQLive] = useState(query ?? "");
+  useEffect(() => {
+    if (query == null) return; // external search not used
+    const t = window.setTimeout(() => setQLive(query), debounceMs);
+    return () => window.clearTimeout(t);
+  }, [query, debounceMs]);
+
+  // Safe, case-insensitive filter. No RegExp; just .includes().
+  const filteredRows = useMemo(() => {
+    const needle = (qLive ?? "").trim().toLowerCase();
+    if (!needle) return rows || [];
+    // iterate once per row and check values; bail early when matched
+    return (rows || []).filter((r) => {
+      for (const v of Object.values(r || {})) {
+        if (toStr(v).toLowerCase().includes(needle)) return true;
+      }
+      return false;
+    });
+  }, [rows, qLive]);
+
   const cols = useMemo<ColumnDef<any>[]>(() => {
     const keys = new Set<string>();
-    rows?.forEach((r) => Object.keys(r || {}).forEach((k) => keys.add(k)));
+    (rows || []).forEach((r) => Object.keys(r || {}).forEach((k) => keys.add(k)));
     const ordered = Array.from(keys);
     // bubble id-like fields to the front
     const idOrder = ["patient_id", "sample_id", "bin_id", "isolate_id", "id"];
@@ -53,7 +93,7 @@ export default function DataTable({ rows, onOpenLineage, onRowDetails, onOpenNet
   }, [rows, onOpenLineage, entity]);
 
   const table = useReactTable({
-    data: rows || [],
+    data: filteredRows,
     columns: cols,
     getCoreRowModel: getCoreRowModel(),
   });
@@ -99,7 +139,7 @@ export default function DataTable({ rows, onOpenLineage, onRowDetails, onOpenNet
               ))}
             </tr>
           ))}
-          {!rows?.length && (
+          {!filteredRows?.length && (
             <tr>
               <td className="p-4 text-gray-500">No rows</td>
             </tr>

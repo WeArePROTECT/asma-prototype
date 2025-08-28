@@ -66,3 +66,38 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+/* --- Sprint E: Print-friendly network --- */
+@media print {
+  .net-toolbar,
+  .net-actions,
+  .net-legend {
+    display: none !important;
+  }
+
+  .net-wrap {
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Let canvas expand; browsers will fit it to page width */
+  canvas.net-canvas {
+    width: 100vw !important;
+    height: auto !important;
+  }
+
+  /* Optional: reduce margins for tighter fits */
+  @page { margin: 10mm; }
+}
+
+/* Small utility button style used above */
+.btn {
+  appearance: none;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+.btn:hover { background: #f8fafc; }

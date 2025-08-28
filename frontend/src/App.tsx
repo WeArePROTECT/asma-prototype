@@ -10,12 +10,16 @@ import BinAbundance from "./components/BinAbundance";
 import NetworkView from "./components/NetworkView";
 import Landing from "./Landing";
 import Footer from "./components/Footer";
+import { CartProvider } from "./cart/CartContext";
+import FormulationBuilder from "./formulation/FormulationBuilder";
 
 const qc = new QueryClient();
 export default function App() {
   return (
     <QueryClientProvider client={qc}>
-      <Shell />
+      <CartProvider>
+        <Shell />
+      </CartProvider>
     </QueryClientProvider>
   );
 }
@@ -46,7 +50,7 @@ function Shell() {
     <div className="h-screen flex flex-col">
       <Header />
       <div className="flex-1">
-        {route.startsWith("#/landing") ? <Landing /> : <Root />}
+        {route.startsWith("#/landing") ? <Landing /> :  route.startsWith("#/formulate") ? <FormulationBuilder /> : <Root />}
       </div>
       <Footer />
     </div>

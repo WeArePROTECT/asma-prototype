@@ -8,7 +8,7 @@ import json
 import os
 import io
 
-app = FastAPI(title="ASMA Demo API", version="0.3.2")
+app = FastAPI(title="ASMA Demo API", version="0.3.3")
 
 REPO_ROOT: Path = Path(__file__).resolve().parents[2]
 DATA_DIR_ENV = os.getenv("ASMA_DATA_DIR") or os.getenv("DEMO_DATA_DIR")
@@ -103,7 +103,8 @@ def get_prebiotics(): return prebiotics
 @app.get("/network")
 def get_network(isolate_id: Optional[str] = None, type: Optional[str] = Query(None), max_neighbors: int = 80):
   edges = interactions
-  if type:
+  # Treat "All" (or "all") as no filter to match the UI dropdown
+  if type and type.lower() != "all":
     edges = [e for e in edges if e.get("type") == type]
   if isolate_id:
     edges = [e for e in edges if e.get("source_isolate") == isolate_id or e.get("target_isolate") == isolate_id]
@@ -169,3 +170,18 @@ def preview_formulation(payload: FormPreviewIn, debug: Optional[int] = 0):
     bd["notes"] = notes or ["No notable interactions"]
     return bd
   return {"score_predicted": bd["score_predicted"], "notes": notes or ["No notable interactions"]}
+
+# --- Minimal search to stop 404 when typing in the Browser search box ---
+@app.get("/search")
+def search(q: str):
+  term = (q or "").strip().lower()
+  if not term:
+    return {"patients": [], "samples": [], "bins": [], "isolates": []}
+  def match_row(row: Dict[str, Any]) -> bool:
+    return any(term in str(v).lower() for v in row.values())
+  return {
+    "patients": [p for p in patients if match_row(p)],
+    "samples":  [s for s in samples if match_row(s)],
+    "bins":     [b for b in bins if match_row(b)],
+    "isolates": [i for i in isolates if match_row(i)],
+  }

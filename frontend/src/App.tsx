@@ -66,10 +66,7 @@ function Shell() {
 function PatientsTable({ searchTerm, onOpenLineage, onRowDetails, onOpenNetworkWithFocus }: any) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchData, setSearchData] = useState<any[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
 
-  // Load base data
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -85,42 +82,15 @@ function PatientsTable({ searchTerm, onOpenLineage, onRowDetails, onOpenNetworkW
     loadData();
   }, []);
 
-  // Load search data
-  useEffect(() => {
-    const loadSearchData = async () => {
-      if (!searchTerm.trim()) {
-        setSearchData([]);
-        return;
-      }
-      
-      setSearchLoading(true);
-      try {
-        const result = await api.search(searchTerm);
-        setSearchData(result.patients || []);
-      } catch (error) {
-        console.error("Failed to search patients:", error);
-        setSearchData([]);
-      } finally {
-        setSearchLoading(false);
-      }
-    };
-    
-    loadSearchData();
-  }, [searchTerm]);
-
-  // Determine what data to show
-  const rows = searchTerm.trim() ? searchData : data;
-  const isLoading = loading || searchLoading;
-
   return (
     <DataTable
-      rows={rows}
+      rows={data}
       entity="patients"
       onOpenLineage={onOpenLineage}
       onRowDetails={onRowDetails}
       onOpenNetworkWithFocus={onOpenNetworkWithFocus}
       searchTerm={searchTerm}
-      loading={isLoading}
+      loading={loading}
     />
   );
 }
@@ -128,10 +98,7 @@ function PatientsTable({ searchTerm, onOpenLineage, onRowDetails, onOpenNetworkW
 function SamplesTable({ searchTerm, onOpenLineage, onRowDetails, onOpenNetworkWithFocus }: any) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchData, setSearchData] = useState<any[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
 
-  // Load base data
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -147,42 +114,15 @@ function SamplesTable({ searchTerm, onOpenLineage, onRowDetails, onOpenNetworkWi
     loadData();
   }, []);
 
-  // Load search data
-  useEffect(() => {
-    const loadSearchData = async () => {
-      if (!searchTerm.trim()) {
-        setSearchData([]);
-        return;
-      }
-      
-      setSearchLoading(true);
-      try {
-        const result = await api.search(searchTerm);
-        setSearchData(result.samples || []);
-      } catch (error) {
-        console.error("Failed to search samples:", error);
-        setSearchData([]);
-      } finally {
-        setSearchLoading(false);
-      }
-    };
-    
-    loadSearchData();
-  }, [searchTerm]);
-
-  // Determine what data to show
-  const rows = searchTerm.trim() ? searchData : data;
-  const isLoading = loading || searchLoading;
-
   return (
     <DataTable
-      rows={rows}
+      rows={data}
       entity="samples"
       onOpenLineage={onOpenLineage}
       onRowDetails={onRowDetails}
       onOpenNetworkWithFocus={onOpenNetworkWithFocus}
       searchTerm={searchTerm}
-      loading={isLoading}
+      loading={loading}
     />
   );
 }
@@ -190,10 +130,7 @@ function SamplesTable({ searchTerm, onOpenLineage, onRowDetails, onOpenNetworkWi
 function BinsTable({ searchTerm, onOpenLineage, onRowDetails, onOpenNetworkWithFocus }: any) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchData, setSearchData] = useState<any[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
 
-  // Load base data
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -209,42 +146,15 @@ function BinsTable({ searchTerm, onOpenLineage, onRowDetails, onOpenNetworkWithF
     loadData();
   }, []);
 
-  // Load search data
-  useEffect(() => {
-    const loadSearchData = async () => {
-      if (!searchTerm.trim()) {
-        setSearchData([]);
-        return;
-      }
-      
-      setSearchLoading(true);
-      try {
-        const result = await api.search(searchTerm);
-        setSearchData(result.bins || []);
-      } catch (error) {
-        console.error("Failed to search bins:", error);
-        setSearchData([]);
-      } finally {
-        setSearchLoading(false);
-      }
-    };
-    
-    loadSearchData();
-  }, [searchTerm]);
-
-  // Determine what data to show
-  const rows = searchTerm.trim() ? searchData : data;
-  const isLoading = loading || searchLoading;
-
   return (
     <DataTable
-      rows={rows}
+      rows={data}
       entity="bins"
       onOpenLineage={onOpenLineage}
       onRowDetails={onRowDetails}
       onOpenNetworkWithFocus={onOpenNetworkWithFocus}
       searchTerm={searchTerm}
-      loading={isLoading}
+      loading={loading}
     />
   );
 }
@@ -252,10 +162,7 @@ function BinsTable({ searchTerm, onOpenLineage, onRowDetails, onOpenNetworkWithF
 function IsolatesTable({ searchTerm, onOpenLineage, onRowDetails, onOpenNetworkWithFocus }: any) {
   const [data, setData] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchData, setSearchData] = useState<any[]>([]);
-  const [searchLoading, setSearchLoading] = useState(false);
 
-  // Load base data
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
@@ -271,51 +178,24 @@ function IsolatesTable({ searchTerm, onOpenLineage, onRowDetails, onOpenNetworkW
     loadData();
   }, []);
 
-  // Load search data
-  useEffect(() => {
-    const loadSearchData = async () => {
-      if (!searchTerm.trim()) {
-        setSearchData([]);
-        return;
-      }
-      
-      setSearchLoading(true);
-      try {
-        const result = await api.search(searchTerm);
-        setSearchData(result.isolates || []);
-      } catch (error) {
-        console.error("Failed to search isolates:", error);
-        setSearchData([]);
-      } finally {
-        setSearchLoading(false);
-      }
-    };
-    
-    loadSearchData();
-  }, [searchTerm]);
-
-  // Determine what data to show
-  const rows = searchTerm.trim() ? searchData : data;
-  const isLoading = loading || searchLoading;
-
   return (
     <DataTable
-      rows={rows}
+      rows={data}
       entity="isolates"
       onOpenLineage={onOpenLineage}
       onRowDetails={onRowDetails}
       onOpenNetworkWithFocus={onOpenNetworkWithFocus}
       searchTerm={searchTerm}
-      loading={isLoading}
+      loading={loading}
     />
   );
 }
 
 function Root() {
   const [selectedEntity, setSelectedEntity] = useState<Entity>("patients");
-  const [selectedPatient, setSelectedPatient] = useState<string | undefined>();
-  const [selectedSample, setSelectedSample] = useState<string | undefined>();
-  // Separate search terms for each entity to prevent data bleeding
+  // Remove these unused state variables
+  // const [selectedPatient, setSelectedPatient] = useState<string | undefined>();
+  // const [selectedSample, setSelectedSample] = useState<string | undefined>();
   const [searchTerms, setSearchTerms] = useState<Record<Entity, string>>({
     patients: "",
     samples: "",
@@ -339,14 +219,6 @@ function Root() {
       [entity]: term
     }));
   };
-
-  // Clear search when switching entities (optional - you can remove this if you want to persist search terms)
-  // useEffect(() => {
-  //   setSearchTerms(prev => ({
-  //     ...prev,
-  //     [selectedEntity]: ""
-  //   }));
-  // }, [selectedEntity]);
 
   // Handlers
   const onOpenLineage = async (row: any) => {
@@ -402,10 +274,6 @@ function Root() {
   return (
     <div className="h-full flex bg-gradient-to-br from-slate-50 to-blue-50">
       <Sidebar
-        selectedPatient={selectedPatient}
-        setSelectedPatient={setSelectedPatient}
-        selectedSample={selectedSample}
-        setSelectedSample={setSelectedSample}
         selectedEntity={selectedEntity}
         setSelectedEntity={setSelectedEntity}
       />

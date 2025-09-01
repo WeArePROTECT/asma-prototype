@@ -8,7 +8,7 @@ import json
 import os
 import io
 
-app = FastAPI(title="ASMA Demo API", version="0.3.3")
+app = FastAPI(title="ASMA Demo API", version="0.3.7")
 
 REPO_ROOT: Path = Path(__file__).resolve().parents[2]
 DATA_DIR_ENV = os.getenv("ASMA_DATA_DIR") or os.getenv("DEMO_DATA_DIR")
@@ -86,9 +86,9 @@ def get_bins(sample_id: Optional[str] = None):
 def get_isolates(sample_id: Optional[str] = None, bin_id: Optional[str] = None):
   data = isolates
   if sample_id:
-    data = [i for i in data if i.get("source_sample") == sample_id or i.get("sample_id") == sample_id]
+    data = [i for i in data if i.get("source_sample_id") == sample_id or i.get("sample_id") == sample_id]
   if bin_id:
-    data = [i for i in data if i.get("bin_id") == bin_id]
+    data = [i for i in data if i.get("linked_bins") and bin_id in i.get("linked_bins")]
   return data
 
 @app.get("/isolates/{isolate_id}")
@@ -103,7 +103,6 @@ def get_prebiotics(): return prebiotics
 @app.get("/network")
 def get_network(isolate_id: Optional[str] = None, type: Optional[str] = Query(None), max_neighbors: int = 80):
   edges = interactions
-  # Treat "All" (or "all") as no filter to match the UI dropdown
   if type and type.lower() != "all":
     edges = [e for e in edges if e.get("type") == type]
   if isolate_id:
@@ -171,17 +170,77 @@ def preview_formulation(payload: FormPreviewIn, debug: Optional[int] = 0):
     return bd
   return {"score_predicted": bd["score_predicted"], "notes": notes or ["No notable interactions"]}
 
-# --- Minimal search to stop 404 when typing in the Browser search box ---
+# Lineage endpoints
+@app.get("/lineage/patient/{patient_id}")
+def lineage_patient(patient_id: str):
+  p = PATIENT_INDEX.get(patient_id)
+  if not p:
+    raise HTTPException(status_code=404, detail="patient not found")
+  samps = [s for s in samples if s.get("patient_id") == patient_id]
+  samp_ids = {s["sample_id"] for s in samps}
+  bns = [b for b in bins if b.get("sample_id") in samp_ids]
+  bin_ids = {b["bin_id"] for b in bns}
+  isos = [i for i in isolates if i.get("linked_bins") and any(b in bin_ids for b in i.get("linked_bins"))]
+  return {"patient": p, "samples": samps, "bins": bns, "isolates": isos}
+
+@app.get("/lineage/sample/{sample_id}")
+def lineage_sample(sample_id: str):
+  s = SAMPLE_INDEX.get(sample_id)
+  if not s:
+    raise HTTPException(status_code=404, detail="sample not found")
+  bns = [b for b in bins if b.get("sample_id") == sample_id]
+  bin_ids = {b["bin_id"] for b in bns}
+  isos = [i for i in isolates if i.get("linked_bins") and any(b in bin_ids for b in i.get("linked_bins"))]
+  return {"sample": s, "bins": bns, "isolates": isos}
+
+# Improved search
 @app.get("/search")
 def search(q: str):
   term = (q or "").strip().lower()
   if not term:
     return {"patients": [], "samples": [], "bins": [], "isolates": []}
+
   def match_row(row: Dict[str, Any]) -> bool:
+    for key in ("patient_id", "sample_id", "bin_id", "isolate_id", "id", "taxid_genus", "taxonomy", "genome_depot_id"):
+      if key in row and term in str(row[key]).lower():
+        return True
     return any(term in str(v).lower() for v in row.values())
+
   return {
     "patients": [p for p in patients if match_row(p)],
     "samples":  [s for s in samples if match_row(s)],
     "bins":     [b for b in bins if match_row(b)],
     "isolates": [i for i in isolates if match_row(i)],
   }
+
+@app.get("/download/{entity}.csv")
+def download_csv(entity: str):
+  entity = (entity or "").lower().strip()
+  data_map = {
+    "patients": patients,
+    "samples": samples,
+    "bins": bins,
+    "isolates": isolates,
+    "interactions": interactions,
+    "prebiotics": prebiotics,
+    "formulations": formulations if isinstance(formulations, list) else [],
+  }
+  rows = data_map.get(entity)
+  if rows is None:
+    raise HTTPException(status_code=404, detail="unknown entity")
+  if entity == "interactions" and isinstance(rows, dict) and "edges" in rows:
+    rows = rows["edges"]
+  if not rows:
+    return Response(content="", media_type="text/csv")
+  keys = set()
+  for r in rows:
+    if isinstance(r, dict):
+      keys.update(r.keys())
+  keys = list(sorted(keys))
+  buf = io.StringIO()
+  w = csv.DictWriter(buf, fieldnames=keys)
+  w.writeheader()
+  for r in rows:
+    if isinstance(r, dict):
+      w.writerow({k: r.get(k, "") for k in keys})
+  return Response(content=buf.getvalue(), media_type="text/csv")

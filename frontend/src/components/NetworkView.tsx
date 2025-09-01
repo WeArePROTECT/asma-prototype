@@ -61,9 +61,9 @@ export default function NetworkView() {
       let res;
       // If a focus ID exists, query by it; otherwise pull a small global sample
       if (targetId) {
-        res = await api.network({ isolateId: targetId, type: edgeType });
+        res = await api.network({ isolate_id: targetId, type: edgeType });
       } else {
-        res = await api.network({ type: edgeType, maxNeighbors: 60 });
+        res = await api.network({ type: edgeType, max_neighbors: 60 });
       }
       const ids = Array.from(new Set([
         ...res.nodes.map(n=>n.id),

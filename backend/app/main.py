@@ -76,6 +76,24 @@ def get_samples(patient_id: Optional[str] = None):
     return [s for s in samples if s.get("patient_id") == patient_id]
   return samples
 
+@app.get("/samples/{sample_id}/abundance")
+def sample_abundance(sample_id: str):
+    s = SAMPLE_INDEX.get(sample_id)
+    if not s:
+        raise HTTPException(status_code=404, detail="sample not found")
+    
+    # Get all bins for this sample
+    sample_bins = [b for b in bins if b.get("sample_id") == sample_id]
+    
+    # Calculate total abundance
+    total_abundance = sum(b.get("abundance", 0) for b in sample_bins)
+    
+    return {
+        "sample_id": sample_id,
+        "bins": sample_bins,
+        "total_abundance": round(total_abundance, 3)
+    }
+
 @app.get("/bins")
 def get_bins(sample_id: Optional[str] = None):
   if sample_id:

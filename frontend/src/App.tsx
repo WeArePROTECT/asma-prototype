@@ -12,6 +12,7 @@ import Landing from "./Landing";
 import Footer from "./components/Footer";
 import { CartProvider } from "./cart/CartContext";
 import FormulationBuilder from "./formulation/FormulationBuilder";
+import LineageView from './components/LineageView';
 
 const qc = new QueryClient();
 export default function App() {
@@ -202,15 +203,11 @@ function Root() {
         </div>
 
         {lineage && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center" onClick={() => setLineage(null)}>
-            <div className="bg-white rounded shadow-lg max-w-4xl w-full max-h-[80vh] overflow-auto p-4" onClick={(e)=>e.stopPropagation()}>
-              <div className="flex items-center mb-2">
-                <h2 className="font-semibold text-lg">Lineage</h2>
-                <button className="ml-auto border rounded px-2 py-1" onClick={() => setLineage(null)}>Close</button>
-              </div>
-              <pre className="text-xs bg-gray-50 p-3 rounded overflow-auto">{JSON.stringify(lineage, null, 2)}</pre>
-            </div>
-          </div>
+          <LineageView 
+            lineage={lineage} 
+            entity={selectedEntity} 
+            onClose={() => setLineage(null)} 
+          />
         )}
 
         {detailsRow && (

@@ -40,8 +40,8 @@ function distPointToSegment(px:number, py:number, ax:number, ay:number, bx:numbe
   return { d: Math.sqrt(dx*dx + dy*dy), cx, cy, t };
 }
 
-export default function NetworkView() {
-  const [focus, setFocus] = useState<string>("");
+export default function NetworkView({ initialFocusId }: { initialFocusId?: string }) {
+  const [focus, setFocus] = useState<string>(initialFocusId || "");
   const [edgeType, setEdgeType] = useState<string>("All");
   const [activeTypes, setActiveTypes] = useState<Set<string>>(new Set(["complementarity","cooccurrence","inhibition","competition"]));
   const [showLegend, setShowLegend] = useState<boolean>(true);
@@ -50,7 +50,7 @@ export default function NetworkView() {
   const [hoverNode, setHoverNode] = useState<{id:string;x:number;y:number}|null>(null);
   const [hoverEdge, setHoverEdge] = useState<{e:NetEdge;x:number;y:number}|null>(null);
 
-  const [selected, setSelected] = useState<string | undefined>(undefined);
+  const [selected, setSelected] = useState<string | undefined>(initialFocusId);
   const [details, setDetails] = useState<Record<string, any>>({});
   const { addIsolate } = useCart();
 
@@ -72,8 +72,20 @@ export default function NetworkView() {
       x: pos[id].x, y: pos[id].y
     }));
     setState({ nodes, edges: res.edges });
-    if (!targetId && ids.length) setSelected(ids[0]);
+    if (targetId && ids.includes(targetId)) {
+      setSelected(targetId);
+    } else if (!targetId && ids.length) {
+      setSelected(ids[0]);
+    }
   }
+
+  // Initialize focus when component mounts or initialFocusId changes
+  useEffect(() => {
+    if (initialFocusId && initialFocusId !== focus) {
+      setFocus(initialFocusId);
+      setSelected(initialFocusId);
+    }
+  }, [initialFocusId]);
 
   useEffect(() => { loadGraph(focus || undefined); /* eslint-disable-next-line */ }, [focus, edgeType]);
 

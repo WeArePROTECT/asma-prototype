@@ -1,8 +1,10 @@
-// src/components/DataTable.tsx (Beautiful Ant Design Table)
+// src/components/DataTable.tsx (Beautiful Ant Design Table with Entity-Specific Search)
 import React, { useEffect, useMemo, useState } from "react";
-import { Table, Button, Tag, Space, Input, Card } from "antd";
-import { SearchOutlined, EyeOutlined, LinkOutlined } from "@ant-design/icons";
+import { Table, Button, Tag, Space, Input, Card, Typography, Badge } from "antd";
+import { SearchOutlined, EyeOutlined, LinkOutlined, DatabaseOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
+
+const { Title, Text } = Typography;
 
 type Props = {
   rows: any[];
@@ -10,8 +12,7 @@ type Props = {
   onRowDetails?: (row: any) => void;
   onOpenNetworkWithFocus?: (isolateId: string) => void;
   entity: "patients" | "samples" | "bins" | "isolates";
-  query?: string;
-  debounceMs?: number;
+  searchTerm?: string; // Add this prop
 };
 
 function toStr(v: any): string {
@@ -21,45 +22,51 @@ function toStr(v: any): string {
   try { return JSON.stringify(v); } catch { return ""; }
 }
 
-// Helper function to format cell values
+// Helper function to format cell values with enhanced styling
 function formatCellValue(value: any) {
-  if (value == null) return "-";
+  if (value == null) return <span className="text-gray-400 italic">-</span>;
   
   if (typeof value === "boolean") {
     return (
-      <Tag color={value ? "green" : "red"}>
-        {value ? "Yes" : "No"}
-      </Tag>
+      <Badge 
+        status={value ? "success" : "error"} 
+        text={value ? "Yes" : "No"}
+        className="font-medium"
+      />
     );
   }
   
   if (typeof value === "number") {
-    return <span className="font-mono">{value.toLocaleString()}</span>;
+    return (
+      <span className="font-mono font-semibold text-blue-600">
+        {value.toLocaleString()}
+      </span>
+    );
   }
   
   if (Array.isArray(value)) {
     return (
-      <Tag color="blue">
+      <Tag color="blue" className="font-medium">
         {value.length} items
       </Tag>
     );
   }
   
   if (typeof value === "object") {
-    return <Tag color="orange">Object</Tag>;
+    return <Tag color="orange" className="font-medium">Object</Tag>;
   }
   
   // String values
   const str = String(value);
   if (str.length > 50) {
     return (
-      <span title={str}>
+      <span title={str} className="text-gray-700">
         {str.substring(0, 47)}...
       </span>
     );
   }
   
-  return str;
+  return <span className="text-gray-700 font-medium">{str}</span>;
 }
 
 export default function DataTable({
@@ -68,33 +75,99 @@ export default function DataTable({
   onRowDetails,
   onOpenNetworkWithFocus,
   entity,
-  query,
-  debounceMs = 300,
+  searchTerm = "", // Add default value
 }: Props) {
-  const [qLive, setQLive] = useState(query ?? "");
-  const [searchText, setSearchText] = useState("");
-
-  useEffect(() => {
-    if (query == null) return;
-    const t = window.setTimeout(() => setQLive(query), debounceMs);
-    return () => window.clearTimeout(t);
-  }, [query, debounceMs]);
-
-  // Safe, case-insensitive filter
+  // Implement search functionality with entity-specific filtering
   const filteredRows = useMemo(() => {
-    const needle = (qLive ?? "").trim().toLowerCase();
-    if (!needle) return rows || [];
+    // Ensure we only have data for the correct entity
+    let entityFilteredRows = rows || [];
     
-    return (rows || []).filter((r) => {
-      for (const v of Object.values(r || {})) {
-        if (toStr(v).toLowerCase().includes(needle)) return true;
-      }
-      return false;
-    });
-  }, [rows, qLive]);
+    // Apply strict entity-specific filtering to prevent cross-contamination
+    if (entity === "patients") {
+      entityFilteredRows = entityFilteredRows.filter(row => 
+        row.patient_id && 
+        !row.sample_id && 
+        !row.bin_id && 
+        !row.isolate_id &&
+        row.age !== undefined &&
+        row.sex !== undefined &&
+        row.condition !== undefined &&
+        row.cohort !== undefined
+      );
+    } else if (entity === "samples") {
+      entityFilteredRows = entityFilteredRows.filter(row => 
+        row.sample_id && 
+        !row.bin_id && 
+        !row.isolate_id &&
+        row.patient_id !== undefined &&
+        (row.sample_type !== undefined || row.type !== undefined) &&
+        (row.collection_date !== undefined || row.date !== undefined) &&
+        row.project_id !== undefined
+      );
+    } else if (entity === "bins") {
+      entityFilteredRows = entityFilteredRows.filter(row => 
+        row.bin_id && 
+        !row.isolate_id &&
+        row.sample_id !== undefined &&
+        row.taxonomy !== undefined &&
+        row.abundance !== undefined
+      );
+    } else if (entity === "isolates") {
+      entityFilteredRows = entityFilteredRows.filter(row => 
+        row.isolate_id &&
+        row.patient_id !== undefined &&
+        (row.source_sample_id !== undefined || row.sample_id !== undefined) &&
+        row.taxonomy !== undefined
+      );
+    }
+    
+    // Apply search filtering if searchTerm is provided
+    if (searchTerm && searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase().trim();
+      entityFilteredRows = entityFilteredRows.filter(row => {
+        // Entity-specific search fields
+        if (entity === "patients") {
+          return (
+            toStr(row.patient_id).toLowerCase().includes(searchLower) ||
+            toStr(row.age).toLowerCase().includes(searchLower) ||
+            toStr(row.sex).toLowerCase().includes(searchLower) ||
+            toStr(row.condition).toLowerCase().includes(searchLower) ||
+            toStr(row.cohort).toLowerCase().includes(searchLower)
+          );
+        } else if (entity === "samples") {
+          return (
+            toStr(row.sample_id).toLowerCase().includes(searchLower) ||
+            toStr(row.patient_id).toLowerCase().includes(searchLower) ||
+            toStr(row.sample_type || row.type).toLowerCase().includes(searchLower) ||
+            toStr(row.collection_date || row.date).toLowerCase().includes(searchLower) ||
+            toStr(row.project_id).toLowerCase().includes(searchLower)
+          );
+        } else if (entity === "bins") {
+          return (
+            toStr(row.bin_id).toLowerCase().includes(searchLower) ||
+            toStr(row.sample_id).toLowerCase().includes(searchLower) ||
+            toStr(row.taxonomy).toLowerCase().includes(searchLower) ||
+            toStr(row.abundance).toLowerCase().includes(searchLower) ||
+            toStr(row.pathways).toLowerCase().includes(searchLower)
+          );
+        } else if (entity === "isolates") {
+          return (
+            toStr(row.isolate_id).toLowerCase().includes(searchLower) ||
+            toStr(row.patient_id).toLowerCase().includes(searchLower) ||
+            toStr(row.source_sample_id || row.sample_id).toLowerCase().includes(searchLower) ||
+            toStr(row.taxonomy).toLowerCase().includes(searchLower) ||
+            toStr(row.amr_flags).toLowerCase().includes(searchLower)
+          );
+        }
+        return false;
+      });
+    }
+    
+    return entityFilteredRows;
+  }, [rows, entity, searchTerm]);
 
   const columns = useMemo<ColumnsType<any>>(() => {
-    // Entity-specific column definitions
+    // Entity-specific column definitions with enhanced styling
     const entityColumns = {
       patients: [
         { key: "patient_id", title: "Patient ID", width: 120 },
@@ -128,7 +201,7 @@ export default function DataTable({
 
     const baseCols = (entityColumns[entity] || []).map((col) => ({
       title: (
-        <span className="font-semibold text-gray-700">
+        <span className="font-bold text-gray-800 text-sm">
           {col.title}
         </span>
       ),
@@ -139,16 +212,20 @@ export default function DataTable({
       width: col.width,
     }));
 
-    // Add action column
+    // Add action column with enhanced styling
     const showLineage = entity === "patients" || entity === "samples";
     const showDetails = entity === "samples" || entity === "bins";
     const showNetwork = entity === "isolates" && !!onOpenNetworkWithFocus;
 
     if (showLineage || showDetails || showNetwork) {
       baseCols.push({
-        title: "Actions",
+        title: (
+          <span className="font-bold text-gray-800 text-sm">
+            Actions
+          </span>
+        ),
         key: "actions",
-        width: 150,
+        width: 180,
         render: (_, record) => (
           <Space size="small">
             {showLineage && (
@@ -156,6 +233,7 @@ export default function DataTable({
                 type="link"
                 size="small"
                 icon={<LinkOutlined />}
+                className="text-blue-600 hover:text-blue-800 font-medium"
                 onClick={(e) => {
                   e.stopPropagation();
                   onOpenLineage?.(record);
@@ -169,6 +247,7 @@ export default function DataTable({
                 type="link"
                 size="small"
                 icon={<EyeOutlined />}
+                className="text-green-600 hover:text-green-800 font-medium"
                 onClick={(e) => {
                   e.stopPropagation();
                   onRowDetails?.(record);
@@ -182,6 +261,7 @@ export default function DataTable({
                 type="link"
                 size="small"
                 icon={<LinkOutlined />}
+                className="text-purple-600 hover:text-purple-800 font-medium"
                 onClick={(e) => {
                   e.stopPropagation();
                   const iso = record.isolate_id || record.id;
@@ -211,28 +291,28 @@ export default function DataTable({
   const clickable = (entity === "samples" || entity === "bins" || (entity === "isolates" && !!onOpenNetworkWithFocus));
 
   return (
-    <Card 
-      title={
-        <div className="flex items-center justify-between">
-          <span className="text-lg font-semibold">
+    <div className="space-y-4">
+      {/* Enhanced Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <DatabaseOutlined className="text-xl text-blue-600" />
+          <Title level={4} className="!mb-0 !text-gray-800">
             {entity.charAt(0).toUpperCase() + entity.slice(1)} Data
-          </span>
-          <Input
-            placeholder="Search data..."
-            prefix={<SearchOutlined />}
-            value={searchText}
-            onChange={(e) => setSearchText(e.target.value)}
-            style={{ width: 250 }}
-            allowClear
-          />
+            {searchTerm && (
+              <span className="ml-2 text-sm text-blue-600 font-normal">
+                (Searching for "{searchTerm}")
+              </span>
+            )}
+          </Title>
+          <Badge count={filteredRows.length} showZero className="bg-blue-500" />
         </div>
-      }
-      className="shadow-lg"
-    >
+      </div>
+
+      {/* Enhanced Table */}
       <Table
         columns={columns}
         dataSource={filteredRows}
-        rowKey={(record, index) => record.id || record.patient_id || record.sample_id || record.bin_id || record.isolate_id || index}
+        rowKey={(record) => record.id || record.patient_id || record.sample_id || record.bin_id || record.isolate_id || Math.random().toString()}
         pagination={{
           pageSize: 10,
           showSizeChanger: true,
@@ -240,6 +320,7 @@ export default function DataTable({
           showTotal: (total, range) => 
             `${range[0]}-${range[1]} of ${total} items`,
           pageSizeOptions: ['10', '20', '50', '100'],
+          className: "mt-4",
         }}
         scroll={{ x: 'max-content' }}
         size="middle"
@@ -249,17 +330,23 @@ export default function DataTable({
           style: { cursor: 'pointer' }
         }) : undefined}
         rowClassName={(record, index) => 
-          index % 2 === 0 ? 'bg-gray-50' : 'bg-white'
+          index % 2 === 0 ? 'bg-blue-50/50 hover:bg-blue-100/50' : 'bg-white hover:bg-gray-50'
         }
+        className="shadow-sm rounded-lg overflow-hidden"
         locale={{
           emptyText: (
-            <div className="py-8 text-gray-500">
-              <SearchOutlined style={{ fontSize: 48, marginBottom: 16 }} />
-              <div>No data found</div>
+            <div className="py-12 text-center">
+              <DatabaseOutlined className="text-4xl text-gray-300 mb-4" />
+              <div className="text-gray-500 text-lg font-medium">
+                {searchTerm ? `No results found for "${searchTerm}"` : "No data found"}
+              </div>
+              <div className="text-gray-400 text-sm">
+                {searchTerm ? "Try a different search term" : "No data available for this entity"}
+              </div>
             </div>
           )
         }}
       />
-    </Card>
+    </div>
   );
 }

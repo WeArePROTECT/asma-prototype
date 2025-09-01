@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
+import { Card, Button, Input, Space, Typography, Divider, Badge } from "antd";
+import { SearchOutlined, ExportOutlined, NodeIndexOutlined, DatabaseOutlined } from "@ant-design/icons";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import DataTable from "./components/DataTable";
@@ -10,9 +12,11 @@ import BinAbundance from "./components/BinAbundance";
 import NetworkView from "./components/NetworkView";
 import Landing from "./Landing";
 import Footer from "./components/Footer";
-import { CartProvider } from "./cart/CartContext";
+import { useCart, CartProvider } from "./cart/CartContext";
 import FormulationBuilder from "./formulation/FormulationBuilder";
 import LineageView from './components/LineageView';
+
+const { Title, Text } = Typography;
 
 const qc = new QueryClient();
 export default function App() {
@@ -48,7 +52,7 @@ function Shell() {
   }, [route]);
 
   return (
-    <div className="h-screen flex flex-col">
+    <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 to-blue-50">
       <Header />
       <div className="flex-1">
         {route.startsWith("#/landing") ? <Landing /> :  route.startsWith("#/formulate") ? <FormulationBuilder /> : <Root />}
@@ -58,98 +62,305 @@ function Shell() {
   );
 }
 
+// COMPLETELY SEPARATE COMPONENTS FOR EACH ENTITY
+function PatientsTable({ searchTerm, onOpenLineage, onRowDetails, onOpenNetworkWithFocus }: any) {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searchData, setSearchData] = useState<any[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  // Load base data
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const result = await api.patients();
+        setData(result);
+      } catch (error) {
+        console.error("Failed to load patients:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  // Load search data
+  useEffect(() => {
+    const loadSearchData = async () => {
+      if (!searchTerm.trim()) {
+        setSearchData([]);
+        return;
+      }
+      
+      setSearchLoading(true);
+      try {
+        const result = await api.search(searchTerm);
+        setSearchData(result.patients || []);
+      } catch (error) {
+        console.error("Failed to search patients:", error);
+        setSearchData([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    };
+    
+    loadSearchData();
+  }, [searchTerm]);
+
+  // Determine what data to show
+  const rows = searchTerm.trim() ? searchData : data;
+  const isLoading = loading || searchLoading;
+
+  return (
+    <DataTable
+      rows={rows}
+      entity="patients"
+      onOpenLineage={onOpenLineage}
+      onRowDetails={onRowDetails}
+      onOpenNetworkWithFocus={onOpenNetworkWithFocus}
+      searchTerm={searchTerm}
+      loading={isLoading}
+    />
+  );
+}
+
+function SamplesTable({ searchTerm, onOpenLineage, onRowDetails, onOpenNetworkWithFocus }: any) {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searchData, setSearchData] = useState<any[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  // Load base data
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const result = await api.samples();
+        setData(result);
+      } catch (error) {
+        console.error("Failed to load samples:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  // Load search data
+  useEffect(() => {
+    const loadSearchData = async () => {
+      if (!searchTerm.trim()) {
+        setSearchData([]);
+        return;
+      }
+      
+      setSearchLoading(true);
+      try {
+        const result = await api.search(searchTerm);
+        setSearchData(result.samples || []);
+      } catch (error) {
+        console.error("Failed to search samples:", error);
+        setSearchData([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    };
+    
+    loadSearchData();
+  }, [searchTerm]);
+
+  // Determine what data to show
+  const rows = searchTerm.trim() ? searchData : data;
+  const isLoading = loading || searchLoading;
+
+  return (
+    <DataTable
+      rows={rows}
+      entity="samples"
+      onOpenLineage={onOpenLineage}
+      onRowDetails={onRowDetails}
+      onOpenNetworkWithFocus={onOpenNetworkWithFocus}
+      searchTerm={searchTerm}
+      loading={isLoading}
+    />
+  );
+}
+
+function BinsTable({ searchTerm, onOpenLineage, onRowDetails, onOpenNetworkWithFocus }: any) {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searchData, setSearchData] = useState<any[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  // Load base data
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const result = await api.bins();
+        setData(result);
+      } catch (error) {
+        console.error("Failed to load bins:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  // Load search data
+  useEffect(() => {
+    const loadSearchData = async () => {
+      if (!searchTerm.trim()) {
+        setSearchData([]);
+        return;
+      }
+      
+      setSearchLoading(true);
+      try {
+        const result = await api.search(searchTerm);
+        setSearchData(result.bins || []);
+      } catch (error) {
+        console.error("Failed to search bins:", error);
+        setSearchData([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    };
+    
+    loadSearchData();
+  }, [searchTerm]);
+
+  // Determine what data to show
+  const rows = searchTerm.trim() ? searchData : data;
+  const isLoading = loading || searchLoading;
+
+  return (
+    <DataTable
+      rows={rows}
+      entity="bins"
+      onOpenLineage={onOpenLineage}
+      onRowDetails={onRowDetails}
+      onOpenNetworkWithFocus={onOpenNetworkWithFocus}
+      searchTerm={searchTerm}
+      loading={isLoading}
+    />
+  );
+}
+
+function IsolatesTable({ searchTerm, onOpenLineage, onRowDetails, onOpenNetworkWithFocus }: any) {
+  const [data, setData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searchData, setSearchData] = useState<any[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+
+  // Load base data
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        const result = await api.isolates();
+        setData(result);
+      } catch (error) {
+        console.error("Failed to load isolates:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadData();
+  }, []);
+
+  // Load search data
+  useEffect(() => {
+    const loadSearchData = async () => {
+      if (!searchTerm.trim()) {
+        setSearchData([]);
+        return;
+      }
+      
+      setSearchLoading(true);
+      try {
+        const result = await api.search(searchTerm);
+        setSearchData(result.isolates || []);
+      } catch (error) {
+        console.error("Failed to search isolates:", error);
+        setSearchData([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    };
+    
+    loadSearchData();
+  }, [searchTerm]);
+
+  // Determine what data to show
+  const rows = searchTerm.trim() ? searchData : data;
+  const isLoading = loading || searchLoading;
+
+  return (
+    <DataTable
+      rows={rows}
+      entity="isolates"
+      onOpenLineage={onOpenLineage}
+      onRowDetails={onRowDetails}
+      onOpenNetworkWithFocus={onOpenNetworkWithFocus}
+      searchTerm={searchTerm}
+      loading={isLoading}
+    />
+  );
+}
+
 function Root() {
   const [selectedEntity, setSelectedEntity] = useState<Entity>("patients");
   const [selectedPatient, setSelectedPatient] = useState<string | undefined>();
   const [selectedSample, setSelectedSample] = useState<string | undefined>();
-  const [searchTerm, setSearchTerm] = useState("");
+  // Separate search terms for each entity to prevent data bleeding
+  const [searchTerms, setSearchTerms] = useState<Record<Entity, string>>({
+    patients: "",
+    samples: "",
+    bins: "",
+    isolates: ""
+  });
   const [lineage, setLineage] = useState<any | null>(null);
   const [detailsRow, setDetailsRow] = useState<any | null>(null);
-
-  // 🚀 Auto-open network via ?net=1
-  const [showNetwork, setShowNetwork] = useState<boolean>(() => {
-    try { return new URLSearchParams(window.location.search).get("net") === "1"; }
-    catch { return false; }
-  });
-  const initialFocusFromUrl = useMemo(() => {
-    try { return new URLSearchParams(window.location.search).get("focus") || undefined; }
-    catch { return undefined; }
-  }, []);
   const [networkFocusId, setNetworkFocusId] = useState<string | undefined>(undefined);
+  const [showNetwork, setShowNetwork] = useState(false);
 
-  // ESC closes overlays
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        setLineage(null);
-        setDetailsRow(null);
-        setShowNetwork(false);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  const { cartItems, addToCart, removeFromCart } = useCart();
 
-  // Keep ?net in sync with modal state
-  useEffect(() => {
-    try {
-      const sp = new URLSearchParams(window.location.search);
-      if (showNetwork) sp.set("net", "1"); else sp.delete("net");
-      const qs = sp.toString();
-      window.history.replaceState({}, "", `${window.location.pathname}${qs ? "?" + qs : ""}${window.location.hash}`);
-    } catch {}
-  }, [showNetwork]);
+  // Get current search term for selected entity
+  const currentSearchTerm = searchTerms[selectedEntity];
 
-  // Back/forward respects ?net
-  useEffect(() => {
-    const onPop = () => {
-      try { setShowNetwork(new URLSearchParams(window.location.search).get("net") === "1"); }
-      catch {}
-    };
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-  }, []);
+  // Update search term for specific entity
+  const updateSearchTerm = (entity: Entity, term: string) => {
+    setSearchTerms(prev => ({
+      ...prev,
+      [entity]: term
+    }));
+  };
 
-  // data
-  const patientsQ = useQuery({ queryKey: ["patients"], queryFn: api.patients });
-  const samplesQ  = useQuery({ queryKey: ["samples", selectedPatient], queryFn: () => api.samples(selectedPatient) });
-  const binsQ     = useQuery({ queryKey: ["bins", selectedSample], queryFn: () => api.bins(selectedSample) });
-  const isolatesQ = useQuery({ queryKey: ["isolates"], queryFn: () => api.isolates(), staleTime: 5_000 });
+  // Clear search when switching entities (optional - you can remove this if you want to persist search terms)
+  // useEffect(() => {
+  //   setSearchTerms(prev => ({
+  //     ...prev,
+  //     [selectedEntity]: ""
+  //   }));
+  // }, [selectedEntity]);
 
-  const tableRows = useMemo(() => {
-    if (searchTerm.trim()) return [];
-    if (selectedEntity === "patients") return patientsQ.data || [];
-    if (selectedEntity === "samples")  return samplesQ.data  || [];
-    if (selectedEntity === "bins")     return binsQ.data     || [];
-    if (selectedEntity === "isolates") return isolatesQ.data || [];
-    return [];
-  }, [selectedEntity, patientsQ.data, samplesQ.data, binsQ.data, isolatesQ.data, searchTerm]);
-
-  const searchQ = useQuery({
-    queryKey: ["search", searchTerm],
-    queryFn: () => api.search(searchTerm),
-    enabled: !!searchTerm.trim(),
-  });
-
-  const rows = useMemo(() => {
-    if (!searchTerm.trim()) return tableRows;
-    const b = searchQ.data;
-    if (!b) return [];
-    if (selectedEntity === "patients") return b.patients;
-    if (selectedEntity === "samples")  return b.samples;
-    if (selectedEntity === "bins")     return b.bins;
-    if (selectedEntity === "isolates") return b.isolates;
-    return [];
-  }, [tableRows, searchQ.data, searchTerm, selectedEntity]);
-
-  useEffect(() => {
-    if (selectedEntity === "patients") { setSelectedPatient(undefined); setSelectedSample(undefined); }
-    if (selectedEntity === "samples")  { setSelectedSample(undefined); }
-  }, [selectedEntity]);
-
+  // Handlers
   const onOpenLineage = async (row: any) => {
-    if (selectedEntity === "patients") setLineage(await api.lineagePatient(row.patient_id));
-    if (selectedEntity === "samples")  setLineage(await api.lineageSample(row.sample_id));
+    try {
+      if (selectedEntity === "patients") {
+        const lineageData = await api.lineagePatient(row.patient_id);
+        setLineage(lineageData);
+      } else if (selectedEntity === "samples") {
+        const lineageData = await api.lineageSample(row.sample_id);
+        setLineage(lineageData);
+      }
+    } catch (error) {
+      console.error("Failed to fetch lineage:", error);
+    }
   };
 
   const onExport = () => {
@@ -160,13 +371,36 @@ function Root() {
     a.click();
   };
 
-  function onOpenNetworkWithFocus(id: string) {
+  const onOpenNetworkWithFocus = (id: string) => {
     setNetworkFocusId(id);
     setShowNetwork(true);
-  }
+  };
+
+  // Render the appropriate table component
+  const renderTable = () => {
+    const props = {
+      searchTerm: currentSearchTerm,
+      onOpenLineage,
+      onRowDetails: setDetailsRow,
+      onOpenNetworkWithFocus,
+    };
+
+    switch (selectedEntity) {
+      case "patients":
+        return <PatientsTable {...props} />;
+      case "samples":
+        return <SamplesTable {...props} />;
+      case "bins":
+        return <BinsTable {...props} />;
+      case "isolates":
+        return <IsolatesTable {...props} />;
+      default:
+        return <PatientsTable {...props} />;
+    }
+  };
 
   return (
-    <div className="h-full flex">
+    <div className="h-full flex bg-gradient-to-br from-slate-50 to-blue-50">
       <Sidebar
         selectedPatient={selectedPatient}
         setSelectedPatient={setSelectedPatient}
@@ -176,32 +410,57 @@ function Root() {
         setSelectedEntity={setSelectedEntity}
       />
 
-      <main className="flex-1 p-4 space-y-3">
-        <div className="flex items-center gap-2">
-          <h1 className="text-xl font-semibold">ASMA Universal Browser</h1>
-          <span className="text-gray-500">API: {api.base}</span>
-          <div className="ml-auto flex items-center gap-2">
-            <input
-              className="border rounded px-2 py-1 w-64"
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <button className="border rounded px-3 py-1" onClick={() => setShowNetwork(true)}>Open Network</button>
-            <button className="border rounded px-3 py-1" onClick={onExport}>Export CSV</button>
+      <main className="flex-1 p-6 space-y-6">
+        {/* Header Section */}
+        <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <DatabaseOutlined className="text-2xl text-blue-600" />
+                <Title level={2} className="!mb-0 !text-gray-800">
+                  ASMA Universal Browser
+                </Title>
+              </div>
+              <div className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                API: {api.base}
+              </div>
+            </div>
+            
+            <Space size="middle">
+              <Input
+                placeholder={`Search ${selectedEntity}...`}
+                prefix={<SearchOutlined className="text-gray-400" />}
+                value={currentSearchTerm}
+                onChange={(e) => updateSearchTerm(selectedEntity, e.target.value)}
+                style={{ width: 280 }}
+                className="shadow-sm"
+                allowClear
+              />
+              <Button 
+                type="primary" 
+                icon={<NodeIndexOutlined />}
+                onClick={() => setShowNetwork(true)}
+                className="shadow-sm"
+              >
+                Open Network
+              </Button>
+              <Button 
+                icon={<ExportOutlined />}
+                onClick={onExport}
+                className="shadow-sm"
+              >
+                Export CSV
+              </Button>
+            </Space>
           </div>
-        </div>
+        </Card>
 
-        <div className="border rounded">
-          <DataTable
-            rows={rows}
-            entity={selectedEntity}
-            onOpenLineage={onOpenLineage}
-            onRowDetails={setDetailsRow}
-            onOpenNetworkWithFocus={onOpenNetworkWithFocus}
-          />
-        </div>
+        {/* Data Table Section */}
+        <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
+          {renderTable()}
+        </Card>
 
+        {/* Lineage Modal */}
         {lineage && (
           <LineageView 
             lineage={lineage} 
@@ -210,13 +469,20 @@ function Root() {
           />
         )}
 
+        {/* Details Panel */}
         {detailsRow && (
-          <div className="fixed bottom-4 right-4 left-4 md:left-auto md:w-[520px] bg-white border shadow-lg rounded p-4 space-y-3">
+          <div className="fixed bottom-6 right-6 left-6 md:left-auto md:w-[580px] bg-white/95 backdrop-blur-sm border-0 shadow-2xl rounded-xl p-6 space-y-4">
             <div className="flex items-center">
-              <div className="font-semibold">
+              <div className="font-semibold text-lg text-gray-800">
                 Details — {selectedEntity === "samples" ? detailsRow.sample_id : selectedEntity === "bins" ? detailsRow.bin_id : ""}
               </div>
-              <button className="ml-auto border rounded px-2 py-1" onClick={() => setDetailsRow(null)}>Close</button>
+              <Button 
+                type="text" 
+                className="ml-auto text-gray-500 hover:text-gray-700" 
+                onClick={() => setDetailsRow(null)}
+              >
+                ×
+              </Button>
             </div>
 
             {selectedEntity === "samples" && detailsRow?.sample_id && (
@@ -235,19 +501,33 @@ function Root() {
             )}
 
             {(selectedEntity !== "samples" && selectedEntity !== "bins") && (
-              <div className="text-sm text-gray-500">Select a Sample or Bin to see details.</div>
+              <div className="text-sm text-gray-500 text-center py-4">Select a Sample or Bin to see details.</div>
             )}
           </div>
         )}
 
+        {/* Network Modal */}
         {showNetwork && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center" onClick={() => setShowNetwork(false)}>
-            <div className="bg-white rounded shadow-lg w-[980px] max-w-[96vw] max-h-[90vh] overflow-auto p-4" onClick={(e)=>e.stopPropagation()}>
-              <div className="flex items-center mb-2">
-                <h2 className="font-semibold text-lg">Isolate Interaction Network</h2>
-                <button className="ml-auto border rounded px-2 py-1" onClick={() => setShowNetwork(false)}>Close</button>
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowNetwork(false)}>
+            <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-2xl w-[1024px] max-w-[96vw] max-h-[92vh] overflow-hidden" onClick={(e)=>e.stopPropagation()}>
+              <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+                <div className="flex items-center space-x-3">
+                  <NodeIndexOutlined className="text-2xl text-blue-600" />
+                  <Title level={3} className="!mb-0 !text-gray-800">
+                    Isolate Interaction Network
+                  </Title>
+                </div>
+                <Button 
+                  type="text" 
+                  className="text-gray-500 hover:text-gray-700" 
+                  onClick={() => setShowNetwork(false)}
+                >
+                  ×
+                </Button>
               </div>
-              <NetworkView initialFocusId={networkFocusId ?? initialFocusFromUrl} />
+              <div className="p-6">
+                <NetworkView initialFocusId={networkFocusId ?? undefined} />
+              </div>
             </div>
           </div>
         )}

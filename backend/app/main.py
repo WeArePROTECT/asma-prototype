@@ -216,7 +216,7 @@ def lineage_sample(sample_id: str):
   isos = [i for i in isolates if i.get("linked_bins") and any(b in bin_ids for b in i.get("linked_bins"))]
   return {"sample": s, "bins": bns, "isolates": isos}
 
-# Improved search
+# Improved search with debugging
 @app.get("/search")
 def search(q: str):
   term = (q or "").strip().lower()
@@ -224,16 +224,34 @@ def search(q: str):
     return {"patients": [], "samples": [], "bins": [], "isolates": []}
 
   def match_row(row: Dict[str, Any]) -> bool:
-    for key in ("patient_id", "sample_id", "bin_id", "isolate_id", "id", "taxid_genus", "taxonomy", "genome_depot_id"):
+    # Check specific ID fields first
+    for key in ("patient_id", "sample_id", "bin_id", "isolate_id", "id"):
       if key in row and term in str(row[key]).lower():
         return True
+    
+    # Check other important fields
+    for key in ("taxid_genus", "taxonomy", "genome_depot_id", "source_sample_id"):
+      if key in row and term in str(row[key]).lower():
+        return True
+    
+    # Check all values as fallback
     return any(term in str(v).lower() for v in row.values())
 
+  # Debug logging
+  print(f"Searching for term: '{term}'")
+  
+  patients_results = [p for p in patients if match_row(p)]
+  samples_results = [s for s in samples if match_row(s)]
+  bins_results = [b for b in bins if match_row(b)]
+  isolates_results = [i for i in isolates if match_row(i)]
+  
+  print(f"Found {len(patients_results)} patients, {len(samples_results)} samples, {len(bins_results)} bins, {len(isolates_results)} isolates")
+  
   return {
-    "patients": [p for p in patients if match_row(p)],
-    "samples":  [s for s in samples if match_row(s)],
-    "bins":     [b for b in bins if match_row(b)],
-    "isolates": [i for i in isolates if match_row(i)],
+    "patients": patients_results,
+    "samples": samples_results,
+    "bins": bins_results,
+    "isolates": isolates_results,
   }
 
 @app.get("/download/{entity}.csv")

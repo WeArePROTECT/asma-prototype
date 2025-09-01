@@ -1,81 +1,58 @@
+import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 
-import React from "react";
-
-// Simple provider-less cart store with localStorage persistence.
-// Components call useCart() and re-render on any cart change.
-
-type Listener = () => void;
-
-const STORAGE_KEY = "asma_cart";
-
-const store = {
-  items: [] as string[],
-  listeners: new Set<Listener>(),
+type CartState = {
+  isolates: string[];
+  prebiotics: string[];
 };
 
-function readStorage(): string[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const arr = JSON.parse(raw);
-    if (Array.isArray(arr)) return arr.filter((x) => typeof x === "string");
-    return [];
-  } catch {
-    return [];
-  }
-}
-function writeStorage(items: string[]) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); } catch {}
-}
+type CartCtx = {
+  isolates: string[];
+  prebiotics: string[];
+  addIsolate: (id: string) => void;
+  removeIsolate: (id: string) => void;
+  setPrebiotics: (ids: string[]) => void;
+  clear: () => void;
+};
 
-function notify() {
-  store.listeners.forEach((fn) => {
-    try { fn(); } catch {}
-  });
-}
+const KEY = "asma_cart_v1";
+const Ctx = createContext<CartCtx | null>(null);
 
-function setItems(next: string[]) {
-  store.items = Array.from(new Set(next));
-  writeStorage(store.items);
-  notify();
-}
-
-// initialize once
-if (typeof window !== "undefined") {
-  store.items = readStorage();
-}
-
-export function useCart() {
-  const get = React.useCallback(() => store.items, []);
-  const [, setTick] = React.useState(0);
-
-  React.useEffect(() => {
-    const onChange = () => setTick((n) => n + 1);
-    store.listeners.add(onChange);
-    return () => { store.listeners.delete(onChange); };
-  }, []);
-
-  const addIsolate = React.useCallback((id: string) => {
-    if (!id) return;
-    setItems([...store.items, id]);
-  }, []);
-
-  const removeIsolate = React.useCallback((id: string) => {
-    setItems(store.items.filter((x) => x !== id));
-  }, []);
-
-  const clear = React.useCallback(() => setItems([]), []);
-
-  return {
-    items: get(),
-    addIsolate,
-    removeIsolate,
-    clear,
-  };
-}
-
-// Optional Provider (not required). If you later want to inject server state, wrap App with this.
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  useCart(); // just to wire up the change subscription
-  return <>{children}</>;
+  const [isolates, setIsolates] = useState<string[]>([]);
+  const [prebiotics, setPB] = useState<string[]>([]);
+
+  // Load from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) {
+        const v: CartState = JSON.parse(raw);
+        if (Array.isArray(v.isolates)) setIsolates(v.isolates);
+        if (Array.isArray(v.prebiotics)) setPB(v.prebiotics);
+      }
+    } catch {}
+  }, []);
+
+  // Persist to localStorage
+  useEffect(() => {
+    const v: CartState = { isolates, prebiotics };
+    try { localStorage.setItem(KEY, JSON.stringify(v)); } catch {}
+  }, [isolates, prebiotics]);
+
+  const api = useMemo<CartCtx>(() => ({
+    isolates,
+    prebiotics,
+    addIsolate: (id) => setIsolates(prev => prev.includes(id) ? prev : [...prev, id]),
+    removeIsolate: (id) => setIsolates(prev => prev.filter(x => x !== id)),
+    setPrebiotics: (ids) => setPB(ids),
+    clear: () => { setIsolates([]); setPB([]); }
+  }), [isolates, prebiotics]);
+
+  return <Ctx.Provider value={api}>{children}</Ctx.Provider>;
+}
+
+export function useCart(): CartCtx {
+  const v = useContext(Ctx);
+  if (!v) throw new Error("useCart must be used within CartProvider");
+  return v;
 }

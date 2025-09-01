@@ -1,3 +1,4 @@
+// Canvas-based NetworkView with hover/click + legend chips + right-aligned toolbar.
 import React, { useEffect, useRef, useState } from "react";
 import { api } from "../lib/api";
 import { useCart } from "../cart/CartContext";
@@ -13,7 +14,7 @@ const EDGE_COLORS: Record<string, string> = {
   complementarity: "#2563eb",
   cooccurrence: "#10b981",
   inhibition: "#ef4444",
-  competition: "#6b7280", // NEW: neutral gray
+  competition: "#6b7280",
 };
 
 function circleLayout(ids: string[]): Record<string, {x:number;y:number}> {
@@ -42,6 +43,7 @@ function distPointToSegment(px:number, py:number, ax:number, ay:number, bx:numbe
 export default function NetworkView() {
   const [focus, setFocus] = useState<string>("");
   const [edgeType, setEdgeType] = useState<string>("All");
+  const [activeTypes, setActiveTypes] = useState<Set<string>>(new Set(["complementarity","cooccurrence","inhibition","competition"]));
   const [showLegend, setShowLegend] = useState<boolean>(true);
   const [showScores, setShowScores] = useState<boolean>(true);
 
@@ -49,52 +51,41 @@ export default function NetworkView() {
   const [hoverEdge, setHoverEdge] = useState<{e:NetEdge;x:number;y:number}|null>(null);
 
   const [selected, setSelected] = useState<string | undefined>(undefined);
-  const [details, setDetails] = useState<Record<string, any>>({}); // cache by id
+  const [details, setDetails] = useState<Record<string, any>>({});
   const { addIsolate } = useCart();
 
   const [state, setState] = useState<{nodes:NetNode[];edges:NetEdge[]}>({nodes:[],edges:[]});
-  const [loading, setLoading] = useState(false);
 
   async function loadGraph(targetId?: string) {
-    setLoading(true);
-    try {
-      let res;
-      // If a focus ID exists, query by it; otherwise pull a small global sample
-      if (targetId) {
-        res = await api.network({ isolate_id: targetId, type: edgeType });
-      } else {
-        res = await api.network({ type: edgeType, max_neighbors: 60 });
-      }
-      const ids = Array.from(new Set([
-        ...res.nodes.map(n=>n.id),
-        ...res.edges.flatMap(e=>[e.source, e.target])
-      ]));
-      const pos = circleLayout(ids);
-      const nodes: NetNode[] = ids.map(id => ({ id, label: res.nodes.find(n=>n.id===id)?.label, x: pos[id].x, y: pos[id].y }));
-      setState({ nodes, edges: res.edges });
-      if (!targetId && ids.length) {
-        setSelected(ids[0]); // select first node so Add-to-formulation is enabled
-      }
-    } finally {
-      setLoading(false);
-    }
+    let res;
+    if (targetId) res = await api.network({ isolate_id: targetId, type: edgeType });
+    else res = await api.network({ type: edgeType, max_neighbors: 60 });
+
+    const ids = Array.from(new Set([
+      ...res.nodes.map((n:any)=>n.id),
+      ...res.edges.flatMap((e:any)=>[e.source, e.target])
+    ]));
+    const pos = circleLayout(ids);
+    const nodes: NetNode[] = ids.map(id => ({
+      id,
+      label: res.nodes.find((n:any)=>n.id===id)?.label,
+      x: pos[id].x, y: pos[id].y
+    }));
+    setState({ nodes, edges: res.edges });
+    if (!targetId && ids.length) setSelected(ids[0]);
   }
 
   useEffect(() => { loadGraph(focus || undefined); /* eslint-disable-next-line */ }, [focus, edgeType]);
 
-  // Prefetch details for selected & hover nodes (lightweight)
   useEffect(() => {
     const id = selected ?? hoverNode?.id;
     if (!id || details[id]) return;
-    let alive = true;
     (async () => {
-      try { const d = await api.isolate(id); if (alive) setDetails(prev => ({...prev, [id]: d})); }
-      catch { /* ignore */ }
+      try { const d = await api.isolate(id); setDetails(prev => ({...prev, [id]: d})); }
+      catch {}
     })();
-    return () => { alive = false; };
   }, [selected, hoverNode]);
 
-  // canvas draw
   const canvasRef = useRef<HTMLCanvasElement|null>(null);
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -103,55 +94,52 @@ export default function NetworkView() {
     const dpr = window.devicePixelRatio || 1;
     canvas.width = W * dpr; canvas.height = H * dpr; canvas.style.width = W+"px"; canvas.style.height = H+"px";
     ctx.setTransform(dpr,0,0,dpr,0,0);
-    
-    function draw() {
-      ctx.clearRect(0,0,W,H);
-      // edges
-      state.edges.forEach(e => {
-        const a = state.nodes.find(n=>n.id===e.source);
-        const b = state.nodes.find(n=>n.id===e.target);
-        if (!a || !b) return;
-        const hovered = !!(hoverEdge && hoverEdge.e === e);
-        const color = EDGE_COLORS[e.type||"cooccurrence"] || "#999";
-        const width = hovered ? 3 : 1.5 + Math.max(0, Math.min(1, (e.score ?? 0))) * 1.2;
-        ctx.strokeStyle = color;
-        ctx.lineWidth = width;
-        ctx.globalAlpha = hovered ? 1.0 : 0.9;
-        ctx.beginPath();
-        ctx.moveTo(a.x, a.y);
-        ctx.lineTo(b.x, b.y);
-        ctx.stroke();
-        ctx.globalAlpha = 1.0;
+    ctx.clearRect(0,0,W,H);
 
-        // optional score labels at midpoint
-        if (showScores) {
-          const mx = (a.x + b.x)/2, my = (a.y + b.y)/2;
-          const labelType = (e.type || "edge");
-          const text = labelType + (e.score != null ? ` ${Number(e.score).toFixed(2)}` : "");
-          // white halo for readability
-          ctx.font = "11px system-ui, -apple-system, Segoe UI, Roboto";
-          ctx.fillStyle = "white";
-          const pad = 2;
-          const tw = ctx.measureText(text).width;
-          ctx.fillRect(mx - tw/2 - pad, my - 10, tw + pad*2, 14);
-          ctx.fillStyle = "#111";
-          ctx.fillText(text, mx - tw/2, my + 1);
-        }
-      });
-      // nodes
-      state.nodes.forEach(n => {
-        ctx.beginPath();
-        ctx.arc(n.x, n.y, R, 0, Math.PI*2);
-        ctx.fillStyle = (n.id === selected) ? "#111827" : "#374151";
-        ctx.fill();
+    // edges (respect legend toggles)
+    state.edges.forEach(e => {
+      const t = e.type || "cooccurrence";
+      if (!activeTypes.has(t)) return;
+      const a = state.nodes.find(n=>n.id===e.source);
+      const b = state.nodes.find(n=>n.id===e.target);
+      if (!a || !b) return;
+      const hovered = !!(hoverEdge && hoverEdge.e === e);
+      const color = EDGE_COLORS[t] || "#999";
+      const width = hovered ? 3 : 1.5 + Math.max(0, Math.min(1, (e.score ?? 0))) * 1.2;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.globalAlpha = hovered ? 1.0 : 0.9;
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+      ctx.globalAlpha = 1.0;
+
+      if (showScores) {
+        const mx = (a.x + b.x)/2, my = (a.y + b.y)/2;
+        const text = `${t}${e.score != null ? " " + Number(e.score).toFixed(2) : ""}`;
+        ctx.font = "11px system-ui, -apple-system, Segoe UI, Roboto";
+        ctx.fillStyle = "white";
+        const pad = 2;
+        const tw = ctx.measureText(text).width;
+        ctx.fillRect(mx - tw/2 - pad, my - 10, tw + pad*2, 14);
         ctx.fillStyle = "#111";
-        ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto";
-        const label = n.label || n.id;
-        ctx.fillText(label, n.x+R+4, n.y+4);
-      });
-    }
-    draw();
-  }, [state, selected, hoverEdge, showScores]);
+        ctx.fillText(text, mx - tw/2, my + 1);
+      }
+    });
+
+    // nodes
+    state.nodes.forEach(n => {
+      ctx.beginPath();
+      ctx.arc(n.x, n.y, R, 0, Math.PI*2);
+      ctx.fillStyle = (n.id === selected) ? "#111827" : "#374151";
+      ctx.fill();
+      ctx.fillStyle = "#111";
+      ctx.font = "12px system-ui, -apple-system, Segoe UI, Roboto";
+      const label = n.label || n.id;
+      ctx.fillText(label, n.x+R+4, n.y+4);
+    });
+  }, [state, selected, hoverEdge, showScores, activeTypes]);
 
   function nearestNode(x: number, y: number): NetNode | null {
     let best: NetNode | null = null, bestDist = 1e9;
@@ -165,15 +153,15 @@ export default function NetworkView() {
 
   function nearestEdge(x:number, y:number): {e:NetEdge; x:number; y:number} | null {
     let best: {e:NetEdge; x:number; y:number} | null = null;
-    let bestD = 8; // px threshold
+    let bestD = 8;
     for (const e of state.edges) {
+      const t = e.type || "cooccurrence";
+      if (!activeTypes.has(t)) continue;
       const a = state.nodes.find(n=>n.id===e.source);
       const b = state.nodes.find(n=>n.id===e.target);
       if (!a || !b) continue;
-      const { d, cx, cy, t } = distPointToSegment(x,y,a.x,a.y,b.x,b.y);
-      if (d < bestD && t > 0.05 && t < 0.95) { // ignore near endpoints to avoid clashing with nodes
-        bestD = d; best = { e, x: cx, y: cy };
-      }
+      const { d, cx, cy, t:tt } = distPointToSegment(x,y,a.x,a.y,b.x,b.y);
+      if (d < bestD && tt > 0.05 && tt < 0.95) { bestD = d; best = { e, x: cx, y: cy }; }
     }
     return best;
   }
@@ -182,11 +170,7 @@ export default function NetworkView() {
     const rect = (e.target as HTMLCanvasElement).getBoundingClientRect();
     const x = e.clientX - rect.left, y = e.clientY - rect.top;
     const n = nearestNode(x,y);
-    if (n) {
-      setHoverNode({ id: n.id, x, y });
-      setHoverEdge(null);
-      return;
-    }
+    if (n) { setHoverNode({ id: n.id, x, y }); setHoverEdge(null); return; }
     setHoverNode(null);
     const edgeHit = nearestEdge(x,y);
     setHoverEdge(edgeHit);
@@ -200,14 +184,11 @@ export default function NetworkView() {
   }
 
   const hoverNodeDetails = hoverNode ? details[hoverNode.id] : null;
-  const selectedDetails = selected ? details[selected] : null;
   const nameFor = (id:string) => {
     const d = details[id];
     const label = state.nodes.find(n=>n.id===id)?.label;
     return (d?.taxonomy ?? d?.taxid_genus ?? label ?? id) + ` (${id})`;
   };
-
-  // Build hover text for edge (with direction icon for inhibition)
   const edgeHoverText = hoverEdge ? (() => {
     const t = hoverEdge.e.type || "edge";
     const s = (hoverEdge.e.score != null) ? Number(hoverEdge.e.score).toFixed(2) : "";
@@ -218,48 +199,57 @@ export default function NetworkView() {
   })() : null;
 
   return (
-    <div style={{ display: "grid", gridTemplateRows: "auto auto 1fr", gap: 10 }}>
+    <div style={{ display: "grid", gridTemplateRows: "auto auto 1fr auto", gap: 10 }}>
       {/* Controls */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         <button className="border rounded px-2 py-1" onClick={() => setSelected(undefined)}>Close</button>
         <input
-          placeholder="Isolate focus  e.g., ASMA-346 or I001"
+          placeholder="Isolate focus e.g., I001"
           value={focus}
           onChange={(e) => setFocus(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") loadGraph(e.currentTarget.value || undefined); }}
           className="border rounded px-2 py-1"
           style={{ width: 220 }}
         />
-        <label style={{ fontWeight: 600, marginLeft: 8 }}>Edge type</label>
-        <select value={edgeType} onChange={(e)=>setEdgeType(e.target.value)} className="border rounded px-2 py-1">
-          <option>All</option>
-          <option value="complementarity">complementarity</option>
-          <option value="cooccurrence">cooccurrence</option>
-          <option value="inhibition">inhibition</option>
-          <option value="competition">competition</option>
-        </select>
-        <label style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: 12 }}>
-          <input type="checkbox" checked={showLegend} onChange={(e)=>setShowLegend(e.target.checked)} />
-          Show legend
-        </label>
-        <label style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: 12 }}>
-          <input type="checkbox" checked={showScores} onChange={(e)=>setShowScores(e.target.checked)} />
-          Show scores
-        </label>
+
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+          <button className="border rounded px-2 py-1" onClick={() => setSelected(undefined)}>Close</button>
           <button className="border rounded px-2 py-1" onClick={() => selected && addIsolate(selected)} disabled={!selected}>Add to formulation</button>
           <button className="border rounded px-2 py-1" onClick={() => exportPNG()}>Export PNG</button>
           <button className="border rounded px-2 py-1" onClick={() => exportSVG()}>Export SVG</button>
         </div>
       </div>
 
-      {/* Legend */}
+      {/* Legend (clickable chips) */}
       {showLegend && (
         <div style={{ display: "flex", gap: 18, alignItems: "center", fontSize: 13 }}>
-          <LegendItem color={EDGE_COLORS.complementarity} label="complementarity" />
-          <LegendItem color={EDGE_COLORS.cooccurrence} label="cooccurrence" />
-          <LegendItem color={EDGE_COLORS.inhibition} label="inhibition" />
-          <LegendItem color={EDGE_COLORS.competition} label="competition" /> {/* NEW */}
+          {["complementarity","cooccurrence","inhibition","competition"].map((t) => (
+            <button
+              key={t}
+              onClick={() => setActiveTypes(prev => {
+                const n = new Set(prev);
+                if (n.has(t)) n.delete(t); else n.add(t);
+                return n;
+              })}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                border: `1px solid ${activeTypes.has(t) ? EDGE_COLORS[t] : "#e5e7eb"}`,
+                color: activeTypes.has(t) ? "#111" : "#6b7280",
+                background: "white",
+                borderRadius: 999,
+                padding: "4px 10px",
+              }}
+            >
+              <span style={{ width: 26, height: 0, borderTop: `3px solid ${EDGE_COLORS[t]}`, display: "inline-block" }} />
+              <span>{t}</span>
+            </button>
+          ))}
+          <label style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: 12 }}>
+            <input type="checkbox" checked={showScores} onChange={(e)=>setShowScores(e.target.checked)} />
+            Show scores
+          </label>
         </div>
       )}
 
@@ -273,6 +263,7 @@ export default function NetworkView() {
               <div style={{ fontSize: 12, marginTop: 2, opacity: 0.8 }}>
                 {hoverNodeDetails.patient_id ? <>patient: <b>{hoverNodeDetails.patient_id}</b><br/></> : null}
                 {hoverNodeDetails.taxonomy || hoverNodeDetails.taxid_genus ? <>taxon: {hoverNodeDetails.taxonomy ?? hoverNodeDetails.taxid_genus}</> : null}
+                {hoverNodeDetails.annotations_summary ? <><br/>{hoverNodeDetails.annotations_summary}</> : null}
               </div>
             ) : <div style={{ fontSize: 12, opacity: 0.7 }}>…</div>}
           </div>
@@ -287,7 +278,7 @@ export default function NetworkView() {
         )}
       </div>
 
-      {/* Details */}
+      {/* Details card */}
       <div className="border rounded p-3" style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
         <div>
           <div style={{ fontWeight: 700, marginBottom: 8 }}>Isolate details {selected ? <span className="text-sm muted">({selected})</span> : null}</div>
@@ -319,16 +310,7 @@ export default function NetworkView() {
   );
 }
 
-function LegendItem({ color, label }: { color: string; label: string }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <span style={{ width: 26, height: 0, borderTop: `3px solid ${color}`, display: "inline-block" }} />
-      <span>{label}</span>
-    </div>
-  );
-}
-
-// --- Export helpers ---
+// Export helpers
 function exportPNG() {
   const el = document.querySelector("canvas");
   if (!el) return;
@@ -336,7 +318,6 @@ function exportPNG() {
   const a = document.createElement("a");
   a.href = url; a.download = "network.png"; a.click();
 }
-
 function exportSVG() {
-  alert("SVG export is not implemented in this minimal canvas view.");
+  alert("SVG export is not implemented in this canvas view.");
 }

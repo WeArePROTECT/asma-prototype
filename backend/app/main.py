@@ -124,9 +124,10 @@ def _score_breakdown(organisms: List[str]):
   comp_sum = 0.0
   inhib_sum = 0.0
   compo_sum = 0.0
+  cooc_sum = 0.0  # Add cooccurrence sum
   comp_list = []
   inhib_list = []
-  comp_count = inhib_count = compo_count = 0
+  comp_count = inhib_count = compo_count = cooc_count = 0
 
   for e in interactions:
     a = e.get("source_isolate"); b = e.get("target_isolate")
@@ -138,8 +139,11 @@ def _score_breakdown(organisms: List[str]):
         inhib_sum += s; inhib_count += 1; inhib_list.append(e)
       elif t == "competition":
         compo_sum += s; compo_count += 1; inhib_list.append({"type":"competition", **e})
+      elif t == "cooccurrence":  # Add this case
+        cooc_sum += s; cooc_count += 1; comp_list.append(e)
 
-  score = 0.1 + 0.2 * comp_sum - 0.3 * (inhib_sum + 0.5 * compo_sum)
+  # Update scoring formula to include cooccurrence
+  score = 0.1 + 0.2 * comp_sum + 0.15 * cooc_sum - 0.3 * (inhib_sum + 0.5 * compo_sum)
   if inhib_count:
     score -= 0.12 * (inhib_sum / max(1, inhib_count))
   score = max(0.0, min(1.0, score))
@@ -147,10 +151,11 @@ def _score_breakdown(organisms: List[str]):
   return {
     "organisms": list(chosen),
     "sum_complementarity": round(comp_sum, 3),
+    "sum_cooccurrence": round(cooc_sum, 3),  # Add this
     "sum_inhibition": round(inhib_sum, 3),
     "sum_competition": round(compo_sum, 3),
     "avg_inhibition": round(inhib_sum/max(1,inhib_count), 3) if inhib_count else 0.0,
-    "counts": {"complementarity": comp_count, "inhibition": inhib_count, "competition": compo_count},
+    "counts": {"complementarity": comp_count, "cooccurrence": cooc_count, "inhibition": inhib_count, "competition": compo_count},
     "edges_included": {"complementarity": comp_list, "inhibition_or_competition": inhib_list},
     "score_predicted": round(score, 2),
   }

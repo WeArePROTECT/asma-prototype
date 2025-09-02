@@ -169,19 +169,21 @@ function extractInteractionData(notes: string[]) {
   return data;
 }
 
-// Enhanced BreakdownRow component
-function BreakdownRow({ key, color, interactionData, hasDetailedMetrics }: { 
-  key: "complementarity"|"inhibition"|"competition"; 
+// Enhanced BreakdownRow component to handle cooccurrence
+function BreakdownRow({ interactionType, color, interactionData, hasDetailedMetrics }: { 
+  interactionType: "complementarity"|"inhibition"|"competition"|"cooccurrence"; 
   color: string; 
   interactionData: any;
   hasDetailedMetrics: boolean;
 }) {
-  const data = interactionData[key];
+  const data = interactionData[interactionType];
   const count = data?.count ?? 0;
   
   // If we have detailed metrics, use them; otherwise show what we can extract from notes
   const sum = hasDetailedMetrics ? (data?.sum ?? 0) : count;
   const avg = hasDetailedMetrics ? (data?.avg ?? 0) : (count > 0 ? 1 : 0);
+  
+  console.log(`BreakdownRow ${interactionType}:`, { count, sum, avg, hasDetailedMetrics });
   
   return (
     <tr style={{ borderTop: '1px solid #e2e8f0' }}>
@@ -194,7 +196,7 @@ function BreakdownRow({ key, color, interactionData, hasDetailedMetrics }: {
             height: '12px', 
             borderRadius: '50%' 
           }} />
-          <span style={{ textTransform: 'capitalize', fontWeight: '500' }}>{key}</span>
+          <span style={{ textTransform: 'capitalize', fontWeight: '500' }}>{interactionType}</span>
         </span>
       </td>
       <td style={{ padding: '8px 12px', textAlign: 'center', fontVariantNumeric: 'tabular-nums', fontWeight: '500' }}>{count}</td>
@@ -216,6 +218,8 @@ export default function FormulationBuilder() {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [isolateDetails, setIsolateDetails] = React.useState<Record<string, any>>({});
+  // Add state for detailed interaction data
+  const [interactionBreakdown, setInteractionBreakdown] = React.useState<any>(null);
 
   React.useEffect(() => setPB(prebiotics), [prebiotics]);
 
@@ -245,10 +249,27 @@ export default function FormulationBuilder() {
     setLoading(true);
     setError(null);
     try {
+      // First call without debug to get basic response
       const res = await api.previewFormulation({ organisms: isolates, prebiotics: pb });
       setScore(res.score_predicted ?? null);
       setNotes(Array.isArray(res.notes) ? res.notes : []);
+      
+      // Now call with debug parameter as query string to get detailed breakdown
+      const debugRes = await fetch(`${api.base()}/formulations/preview?debug=1`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organisms: isolates, prebiotics: pb }),
+      });
+      
+      if (debugRes.ok) {
+        const debugData = await debugRes.json();
+        console.log('DEBUG DATA:', debugData);
+        setInteractionBreakdown(debugData);
+      } else {
+        console.log('DEBUG API ERROR:', debugRes.status, await debugRes.text());
+      }
     } catch (err) {
+      console.log('PREVIEW ERROR:', err);
       setError(err instanceof Error ? err.message : 'Failed to preview formulation');
     } finally { 
       setLoading(false); 
@@ -289,8 +310,50 @@ export default function FormulationBuilder() {
     URL.revokeObjectURL(a.href);
   }
 
-  // Extract interaction data from notes
-  const interactionData = React.useMemo(() => extractInteractionData(notes), [notes]);
+  // Use detailed metrics from backend instead of parsing notes
+  const interactionData = React.useMemo(() => {
+    if (interactionBreakdown) {
+      // Use the detailed metrics from the backend
+      const data = {
+        complementarity: { 
+          count: interactionBreakdown.counts?.complementarity || 0,
+          sum: interactionBreakdown.sum_complementarity || 0,
+          avg: interactionBreakdown.counts?.complementarity ? 
+               (interactionBreakdown.sum_complementarity / interactionBreakdown.counts.complementarity) : 0
+        },
+        inhibition: { 
+          count: interactionBreakdown.counts?.inhibition || 0,
+          sum: interactionBreakdown.sum_inhibition || 0,
+          avg: interactionBreakdown.avg_inhibition || 0
+        },
+        competition: { 
+          count: interactionBreakdown.counts?.competition || 0,
+          sum: interactionBreakdown.sum_competition || 0,
+          avg: interactionBreakdown.counts?.competition ? 
+               (interactionBreakdown.sum_competition / interactionBreakdown.counts.competition) : 0
+        },
+        cooccurrence: { 
+          count: interactionBreakdown.counts?.cooccurrence || 0,
+          sum: interactionBreakdown.sum_cooccurrence || 0,
+          avg: interactionBreakdown.counts?.cooccurrence ? 
+               (interactionBreakdown.sum_cooccurrence / interactionBreakdown.counts.cooccurrence) : 0
+        }
+      };
+      console.log('PROCESSED INTERACTION DATA:', data); // Add this line
+      return data;
+    } else {
+      // Fallback to parsing notes if no detailed data - ensure all properties exist
+      const fallbackData = extractInteractionData(notes);
+      const data = {
+        complementarity: fallbackData.complementarity || { count: 0, mentions: [] },
+        inhibition: fallbackData.inhibition || { count: 0, mentions: [] },
+        competition: fallbackData.competition || { count: 0, mentions: [] },
+        cooccurrence: { count: 0, mentions: [] } // Add cooccurrence to fallback
+      };
+      console.log('FALLBACK INTERACTION DATA:', data); // Add this line
+      return data;
+    }
+  }, [interactionBreakdown, notes]);
   
   // Check if we have any interaction data
   const hasInteractions = interactionData.complementarity.count > 0 || 
@@ -477,15 +540,16 @@ export default function FormulationBuilder() {
                       </tr>
                     </thead>
                     <tbody style={{ backgroundColor: 'white' }}>
-                      <BreakdownRow key="complementarity" color="#2563eb" interactionData={interactionData} hasDetailedMetrics={false} />
-                      <BreakdownRow key="inhibition" color="#ef4444" interactionData={interactionData} hasDetailedMetrics={false} />
-                      <BreakdownRow key="competition" color="#6b7280" interactionData={interactionData} hasDetailedMetrics={false} />
+                      <BreakdownRow key="complementarity" interactionType="complementarity" color="#2563eb" interactionData={interactionData} hasDetailedMetrics={!!interactionBreakdown} />
+                      <BreakdownRow key="inhibition" interactionType="inhibition" color="#ef4444" interactionData={interactionData} hasDetailedMetrics={!!interactionBreakdown} />
+                      <BreakdownRow key="competition" interactionType="competition" color="#6b7280" interactionData={interactionData} hasDetailedMetrics={!!interactionBreakdown} />
+                      <BreakdownRow key="cooccurrence" interactionType="cooccurrence" color="#10b981" interactionData={interactionData} hasDetailedMetrics={!!interactionBreakdown} />
                     </tbody>
                   </table>
                 </div>
                 {hasInteractions ? (
                   <div style={{ marginTop: '8px', fontSize: '12px', color: '#059669', textAlign: 'center' }}>
-                    ✓ Interaction data extracted from notes
+                    ✓ Interaction data extracted from backend metrics
                   </div>
                 ) : (
                   <div style={{ marginTop: '8px', fontSize: '12px', color: '#6b7280', textAlign: 'center' }}>

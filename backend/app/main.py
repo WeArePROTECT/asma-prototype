@@ -285,3 +285,20 @@ def download_csv(entity: str):
     if isinstance(r, dict):
       w.writerow({k: r.get(k, "") for k in keys})
   return Response(content=buf.getvalue(), media_type="text/csv")
+
+@app.get("/bins/{bin_id}/pathways")
+def bin_pathways(bin_id: str):
+    bin_data = BIN_INDEX.get(bin_id)
+    if not bin_data:
+        raise HTTPException(status_code=404, detail="bin not found")
+    
+    # Return the pathways_scored data if available, otherwise fallback to basic pathways
+    pathways = bin_data.get("pathways_scored", [])
+    if not pathways and bin_data.get("pathways"):
+        # Fallback: convert simple pathway strings to scored format
+        pathways = [{"pathway": p, "score": None, "evidence": "fallback"} for p in bin_data["pathways"]]
+    
+    return {
+        "bin_id": bin_id,
+        "pathways": pathways
+    }

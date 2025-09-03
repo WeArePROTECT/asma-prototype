@@ -18,7 +18,11 @@ export default function BinPathways({ binId }: { binId: string }) {
       <div className="title">Pathways</div>
       <div className="chips">
         {items.map((p, i) => (
-          <span className="chip" key={i} title={p.evidence ? JSON.stringify(p.evidence) : ""}>
+          <span 
+            className="chip" 
+            key={`${p.pathway}-${i}`} // Use pathway name + index for unique key
+            title={p.evidence ? JSON.stringify(p.evidence) : ""}
+          >
             <span>{p.pathway}</span>
             {p.score != null && <span className="score">{p.score}</span>}
           </span>

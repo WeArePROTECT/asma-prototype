@@ -312,7 +312,11 @@ export default function DataTable({
       <Table
         columns={columns}
         dataSource={filteredRows}
-        rowKey={(record) => record.id || record.patient_id || record.sample_id || record.bin_id || record.isolate_id || Math.random().toString()}
+        rowKey={(record, index) => {
+          // Use a combination of ID and index to ensure uniqueness
+          const id = record.id || record.patient_id || record.sample_id || record.bin_id || record.isolate_id;
+          return `${id}-${index}`;
+        }}
         pagination={{
           pageSize: 10,
           showSizeChanger: true,

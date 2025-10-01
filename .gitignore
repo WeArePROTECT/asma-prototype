@@ -266,3 +266,6 @@ Thumbs.db
 .env.*
 *.local.json
 >>>>>>> 1665e88 (feat: bootstrap ASMA prototype (FastAPI, demo_data, docs, CI))
+
+# Re-include frontend/src/lib
+!frontend/src/lib/

@@ -1,6 +1,8 @@
 from pathlib import Path
 from fastapi import FastAPI, Query, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 import csv
@@ -302,3 +304,15 @@ def bin_pathways(bin_id: str):
         "bin_id": bin_id,
         "pathways": pathways
     }
+
+# Serve frontend build
+STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+    @app.get("/")
+    async def serve_frontend():
+        index_path = STATIC_DIR / "index.html"
+        if index_path.exists():
+            return FileResponse(index_path)
+        return {"error": "index.html not found in static build"}

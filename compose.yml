@@ -1,0 +1,12 @@
+version: "3.9"
+services:
+  asma-proto:
+    build: .
+    image: asma-proto:latest
+    container_name: asma-proto
+    ports:
+      - "8765:5000"   # host:container
+    volumes:
+      - /opt/shared/${USER}/asma_data:/app/demo_data
+    environment:
+      - ASMA_DATA_DIR=/app/demo_data

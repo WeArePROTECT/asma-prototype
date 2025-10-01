@@ -308,8 +308,10 @@ def bin_pathways(bin_id: str):
 # Serve frontend build
 STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
 if STATIC_DIR.exists():
-    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+    # Serve the entire frontend build (so /assets/* works)
+    app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="frontend")
 
+    # Explicit root handler for index.html
     @app.get("/")
     async def serve_frontend():
         index_path = STATIC_DIR / "index.html"

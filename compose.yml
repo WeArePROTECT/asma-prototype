@@ -1,10 +1,9 @@
 version: "3.9"
 services:
   asma-proto:
-    image: localhost/asma-prototype:v0.0.6
+    image: localhost/asma-prototype:v0.0.6   # image is built on thar
     container_name: asma-proto
-    ports:
-      - "8765:5000"
+    network_mode: host                       # <-- avoids CNI/ports issues
     volumes:
       - /opt/shared/${USER}/asma-prototype/demo_data:/app/demo_data
     environment:

@@ -28,8 +28,11 @@ type NetworkParams = {
 
 function base() {
   const v = (typeof window !== 'undefined') ? (localStorage.getItem('asma_api_base') || '') : '';
-  return v || 'http://127.0.0.1:8000';
+  // Default to same-origin. If you later reverse-proxy under a subpath (e.g. /asma-proto),
+  // set localStorage.setItem('asma_api_base', '/asma-proto') and the app will use it.
+  return v || '';
 }
+
 
 async function getJson<T>(path: string) : Promise<T> {
   const res = await fetch(base() + path);

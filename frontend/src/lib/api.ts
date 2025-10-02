@@ -2,23 +2,6 @@
 // - Reads base URL from localStorage key 'asma_api_base' (fallback http://127.0.0.1:8000)
 // - Matches your FastAPI endpoints used elsewhere
 
-// Use relative API base so frontend + backend work from same container
-const API_BASE = "";  
-
-// Patients endpoint
-export async function getPatients() {
-  const res = await fetch(`${API_BASE}/patients`);
-  if (!res.ok) throw new Error("Failed to fetch patients");
-  return res.json();
-}
-
-// Network endpoint
-export async function getNetwork(max_neighbors: number = 60) {
-  const res = await fetch(`${API_BASE}/network?max_neighbors=${max_neighbors}`);
-  if (!res.ok) throw new Error("Failed to fetch network");
-  return res.json();
-}
-
 
 type NetworkParams = {
   isolate_id?: string;

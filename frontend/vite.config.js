@@ -1,4 +1,3 @@
-// vite.config.js
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
@@ -9,4 +8,5 @@ export default defineConfig({
     port: 5174,
     strictPort: true,
   },
+  base: "/asma/",  // ensures all assets/scripts/styles use /asma/ prefix
 });

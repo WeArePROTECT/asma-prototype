@@ -78,7 +78,7 @@ export default function Landing() {
               {/* PROTECT motif (bigger) */}
               <div style={{ marginTop: 18 }}>
                 <img
-                  src="/ProtectBanner_short.png"
+                  src="./ProtectBanner_short.png"
                   alt="PROTECT network motif"
                   style={{
                     width: "clamp(420px, 78%, 720px)",
@@ -112,7 +112,7 @@ export default function Landing() {
                   }}
                 >
                   <img
-                    src="/lung3.png"
+                    src="./lung3.png"
                     alt="Airway isolates illustration"
                     style={{
                       width: "100%",

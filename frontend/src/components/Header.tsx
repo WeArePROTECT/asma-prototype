@@ -37,7 +37,7 @@ export default function Header() {
         aria-label="ASMA Prototype — Home"
       >
         <img
-          src="/2025_01_15_PROTECT_Logo-01.jpg"
+          src="./2025_01_15_PROTECT_Logo-01.jpg"
           alt="PROTECT Team"
           style={{ width: 36, height: 36, borderRadius: 6, objectFit: "cover" }}
         />

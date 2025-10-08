@@ -15,7 +15,7 @@ export default function Header() {
         zIndex: 40,
       }}
     >
-      <img src="/2025_01_15_PROTECT_Logo-01.jpg" alt="PROTECT Team" style={{ width: 36, height: 36, borderRadius: 6 }} />
+      <img src="./2025_01_15_PROTECT_Logo-01.jpg" alt="PROTECT Team" style={{ width: 36, height: 36, borderRadius: 6 }} />
       <div style={{ fontWeight: 700 }}>ASMA Prototype</div>
       <nav style={{ marginLeft: "auto", display: "flex", gap: 12 }}>
         <a href="#/landing" style={linkStyle()}>Home</a>

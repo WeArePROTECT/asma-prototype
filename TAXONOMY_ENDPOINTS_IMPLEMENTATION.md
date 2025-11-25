@@ -1,8 +1,8 @@
 # Taxonomy Endpoints Implementation Documentation
 
 **Date:** 2025-11-25  
-**Branch:** dev  
-**Status:** Completed
+**Branch:** main (merged from dev)  
+**Status:** Completed and deployed to production
 
 ## Overview
 
@@ -198,7 +198,43 @@ pytest backend/tests/test_taxonomy.py -v
 
 ## Deployment Notes
 
-- Ensure the ASMA container has read access to `/usr2/people/alex.styer/public_html/`
-- No additional volume mounts needed if using default path
-- Cache headers are conservative (1 hour) - adjust if needed for more frequent updates
+### Container Setup
+
+The ASMA container requires a volume mount for Alex's public_html directory:
+
+```bash
+podman run -d --name asma-proto-v10 -p 8765:5000 \
+  -v /opt/shared/spencerlong/asma-prototype/demo_data:/app/demo_data \
+  -v /usr2/people/alex.styer/public_html:/app/alex_public_html:ro \
+  -e ASMA_DATA_DIR=/app/demo_data \
+  -e ALEX_PUBLIC_HTML_DIR=/app/alex_public_html \
+  --restart unless-stopped \
+  localhost/asma-prototype:v0.0.13
+```
+
+### Important Configuration
+
+- **Volume Mount:** Alex's directory is mounted as read-only (`:ro`) at `/app/alex_public_html`
+- **Environment Variable:** `ALEX_PUBLIC_HTML_DIR` must be set to `/app/alex_public_html` (the mount point inside container)
+- **Read Access:** Container needs read access to `/usr2/people/alex.styer/public_html/`
+- **Cache Headers:** Conservative (1 hour) - adjust if needed for more frequent updates
+
+### Production Deployment
+
+- **Current Image:** `localhost/asma-prototype:v0.0.13`
+- **Container Name:** `asma-proto-v10`
+- **Status:** Running on port 8765, proxied via nginx to `https://protect.qb3.berkeley.edu/asma/`
+- **Path Prefix:** All taxonomy endpoints are accessible under `/asma/api/taxonomy/`
+
+### Build Command
+
+```bash
+cd /usr2/people/spencerlong/asma-prototype
+git checkout main
+podman build -t localhost/asma-prototype:v0.0.13 -f Dockerfile .
+```
+
+### Last-Modified Header
+
+The `/api/taxonomy/tsv` endpoint includes a `Last-Modified` header that reflects the actual file modification time. This allows the tax-table.html page to display when the data was last updated. The header updates automatically when Alex regenerates the taxonomy.tsv file.
 

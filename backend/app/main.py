@@ -415,17 +415,18 @@ def get_taxonomy_table():
             html_content = f.read()
         
         # Replace relative paths with API endpoint paths
+        # Note: paths must include /asma prefix since page is served under /asma/ route
         html_content = html_content.replace(
             'fetch("taxonomy.tsv"',
-            'fetch("/api/taxonomy/tsv"'
+            'fetch("/asma/api/taxonomy/tsv"'
         )
         html_content = html_content.replace(
             'Papa.parse("taxonomy.tsv"',
-            'Papa.parse("/api/taxonomy/tsv"'
+            'Papa.parse("/asma/api/taxonomy/tsv"'
         )
         html_content = html_content.replace(
             'src="logo-banner.png"',
-            'src="/api/taxonomy/logo"'
+            'src="/asma/api/taxonomy/logo"'
         )
         
         return Response(

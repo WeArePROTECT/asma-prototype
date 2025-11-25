@@ -108,6 +108,16 @@ podman run -d --name asma-proto-v10 -p 8765:5000 \
   localhost/asma-prototype:main-latest
 ```
 
+**⚠️ CRITICAL:** Always include both volume mounts and both environment variables. Missing either will cause the taxonomy endpoints to fail.
+
+### Required Configuration
+
+The container **MUST** have:
+1. **Volume mount:** `-v /usr2/people/alex.styer/public_html:/app/alex_public_html:ro`
+2. **Environment variable:** `-e ALEX_PUBLIC_HTML_DIR=/app/alex_public_html`
+
+Without these, the taxonomy endpoints will return 404 errors. The application will log warnings at startup if these are missing.
+
 ## Documentation
 
 - **Full Implementation Details:** See `TAXONOMY_ENDPOINTS_IMPLEMENTATION.md`

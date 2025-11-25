@@ -314,6 +314,39 @@ TAX_TABLE_HTML_PATH = ALEX_PUBLIC_HTML_DIR / "tax-table.html"
 TREEMAP_HTML_PATH = ALEX_PUBLIC_HTML_DIR / "protect-isolate-treemap.html"
 LOGO_BANNER_PATH = ALEX_PUBLIC_HTML_DIR / "logo-banner.png"
 
+# Validate taxonomy paths at startup
+def _validate_taxonomy_paths():
+    """Validate that taxonomy file paths exist and are accessible."""
+    if not ALEX_PUBLIC_HTML_DIR.exists():
+        print(f"[WARNING] ALEX_PUBLIC_HTML_DIR does not exist: {ALEX_PUBLIC_HTML_DIR}")
+        print(f"[WARNING] Set ALEX_PUBLIC_HTML_DIR environment variable to the correct path")
+        print(f"[WARNING] Expected mount point in container: /app/alex_public_html")
+        return False
+    
+    missing_files = []
+    for file_path, file_name in [
+        (TAXONOMY_TSV_PATH, "taxonomy.tsv"),
+        (TAX_TABLE_HTML_PATH, "tax-table.html"),
+        (TREEMAP_HTML_PATH, "protect-isolate-treemap.html"),
+        (LOGO_BANNER_PATH, "logo-banner.png")
+    ]:
+        if not file_path.exists():
+            missing_files.append(f"  - {file_name} at {file_path}")
+    
+    if missing_files:
+        print(f"[WARNING] Missing taxonomy files in {ALEX_PUBLIC_HTML_DIR}:")
+        for missing in missing_files:
+            print(f"[WARNING] {missing}")
+        print(f"[WARNING] Ensure volume mount is correct: -v /usr2/people/alex.styer/public_html:/app/alex_public_html:ro")
+        print(f"[WARNING] And environment variable is set: -e ALEX_PUBLIC_HTML_DIR=/app/alex_public_html")
+        return False
+    
+    print(f"[ASMA] Taxonomy files found at {ALEX_PUBLIC_HTML_DIR}")
+    return True
+
+# Run validation at module load
+_TAXONOMY_PATHS_VALID = _validate_taxonomy_paths()
+
 @app.get("/api/taxonomy/tsv")
 @app.head("/api/taxonomy/tsv")
 def get_taxonomy_tsv(request: Request):
@@ -324,9 +357,12 @@ def get_taxonomy_tsv(request: Request):
     Handles edge cases: missing file, permission errors, empty file.
     """
     if not TAXONOMY_TSV_PATH.exists():
+        error_msg = f"taxonomy.tsv not found at {TAXONOMY_TSV_PATH}"
+        if not _TAXONOMY_PATHS_VALID:
+            error_msg += f". Configuration issue: ALEX_PUBLIC_HTML_DIR={ALEX_PUBLIC_HTML_DIR}. Check container volume mount and environment variable."
         raise HTTPException(
             status_code=404,
-            detail=f"taxonomy.tsv not found at {TAXONOMY_TSV_PATH}"
+            detail=error_msg
         )
     
     if not TAXONOMY_TSV_PATH.is_file():
@@ -420,9 +456,12 @@ def get_taxonomy_table():
     Handles edge cases: missing file, permission errors, encoding issues.
     """
     if not TAX_TABLE_HTML_PATH.exists():
+        error_msg = f"tax-table.html not found at {TAX_TABLE_HTML_PATH}"
+        if not _TAXONOMY_PATHS_VALID:
+            error_msg += f". Configuration issue: ALEX_PUBLIC_HTML_DIR={ALEX_PUBLIC_HTML_DIR}. Check container volume mount and environment variable."
         raise HTTPException(
             status_code=404,
-            detail=f"tax-table.html not found at {TAX_TABLE_HTML_PATH}"
+            detail=error_msg
         )
     
     if not TAX_TABLE_HTML_PATH.is_file():

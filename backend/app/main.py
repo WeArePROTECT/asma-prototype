@@ -1,5 +1,5 @@
 from pathlib import Path
-from fastapi import FastAPI, Query, HTTPException, Response
+from fastapi import FastAPI, Query, HTTPException, Response, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -9,6 +9,8 @@ import csv
 import json
 import os
 import io
+from datetime import datetime
+from email.utils import formatdate
 
 app = FastAPI(title="ASMA Demo API", version="0.3.7")
 
@@ -313,10 +315,12 @@ TREEMAP_HTML_PATH = ALEX_PUBLIC_HTML_DIR / "protect-isolate-treemap.html"
 LOGO_BANNER_PATH = ALEX_PUBLIC_HTML_DIR / "logo-banner.png"
 
 @app.get("/api/taxonomy/tsv")
-def get_taxonomy_tsv():
+@app.head("/api/taxonomy/tsv")
+def get_taxonomy_tsv(request: Request):
     """
     Serve taxonomy.tsv file from Alex's directory.
     Returns TSV content with proper content-type header.
+    Supports HEAD requests - returns headers only for HEAD, content for GET.
     Handles edge cases: missing file, permission errors, empty file.
     """
     if not TAXONOMY_TSV_PATH.exists():
@@ -332,17 +336,34 @@ def get_taxonomy_tsv():
         )
     
     try:
+        # Get file modification time for Last-Modified header
+        file_stat = TAXONOMY_TSV_PATH.stat()
+        last_modified_timestamp = file_stat.st_mtime
+        last_modified_header = formatdate(timeval=last_modified_timestamp, localtime=False)
+        
+        # Build headers
+        headers = {
+            "Content-Disposition": "inline; filename=taxonomy.tsv",
+            "Cache-Control": "public, max-age=3600",
+            "Last-Modified": last_modified_header
+        }
+        
+        # For HEAD requests, return headers only (empty content)
+        if request.method == "HEAD":
+            return Response(
+                content="",
+                media_type="text/tab-separated-values",
+                headers=headers
+            )
+        
+        # For GET requests, read and return file content
         with open(TAXONOMY_TSV_PATH, "r", encoding="utf-8") as f:
             content = f.read()
         
-        # Empty file is acceptable - return as-is
         return Response(
             content=content,
             media_type="text/tab-separated-values",
-            headers={
-                "Content-Disposition": "inline; filename=taxonomy.tsv",
-                "Cache-Control": "public, max-age=3600"
-            }
+            headers=headers
         )
     except PermissionError:
         raise HTTPException(

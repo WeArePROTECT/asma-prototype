@@ -6,12 +6,31 @@ export default function Header() {
   const [hash, setHash] = React.useState<string>(
     typeof window !== "undefined" ? window.location.hash : ""
   );
+  const [is_dropdown_open, setIsDropdownOpen] = React.useState<boolean>(false);
+  const dropdown_ref = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     const onChange = () => setHash(window.location.hash);
     window.addEventListener("hashchange", onChange);
     return () => window.removeEventListener("hashchange", onChange);
   }, []);
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handle_click_outside = (event: MouseEvent) => {
+      if (dropdown_ref.current && !dropdown_ref.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    if (is_dropdown_open) {
+      document.addEventListener("mousedown", handle_click_outside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handle_click_outside);
+    };
+  }, [is_dropdown_open]);
 
   // Cart only on the Universal Browser / Open Network views
   const showCart = hash.startsWith("#/browser");
@@ -64,6 +83,77 @@ export default function Header() {
         </a>
         <a href="#/formulate" style={linkStyle()}>Formulate</a>
 
+        {/* PROTECT Tools Dropdown */}
+        <div ref={dropdown_ref} style={{ position: "relative" }}>
+          <button
+            onClick={() => setIsDropdownOpen(!is_dropdown_open)}
+            style={{
+              ...linkStyle(),
+              background: "transparent",
+              border: "1px solid transparent",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              fontSize: "inherit",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = "#e5e7eb";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = "transparent";
+            }}
+          >
+            PROTECT Tools
+          </button>
+          {is_dropdown_open && (
+            <div
+              style={{
+                position: "absolute",
+                top: "100%",
+                right: 0,
+                marginTop: 4,
+                background: "#ffffff",
+                border: "1px solid #e5e7eb",
+                borderRadius: 8,
+                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+                minWidth: 200,
+                zIndex: 50,
+                overflow: "hidden",
+              }}
+            >
+              <a
+                href="https://protect.qb3.berkeley.edu/protect/"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={dropdownItemStyle()}
+                onClick={() => setIsDropdownOpen(false)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#f3f4f6";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                }}
+              >
+                PROTECT File Viewer
+              </a>
+              <a
+                href="https://protect.qb3.berkeley.edu/genomedepot/"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={dropdownItemStyle()}
+                onClick={() => setIsDropdownOpen(false)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#f3f4f6";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                }}
+              >
+                PROTECT GenomeDepot
+              </a>
+            </div>
+          )}
+        </div>
+
         {/* Cart appears only on Browser/Open Network routes */}
         {showCart ? <div style={{ marginLeft: 8 }}><CartBadge /></div> : null}
       </nav>
@@ -78,5 +168,16 @@ function linkStyle(): React.CSSProperties {
     padding: "6px 10px",
     borderRadius: 6,
     border: "1px solid transparent",
+  };
+}
+
+function dropdownItemStyle(): React.CSSProperties {
+  return {
+    display: "block",
+    padding: "10px 14px",
+    color: "#1f2937",
+    textDecoration: "none",
+    fontSize: 14,
+    transition: "background-color 0.15s ease",
   };
 }

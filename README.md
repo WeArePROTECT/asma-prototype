@@ -81,6 +81,28 @@ Future iterations will incorporate:
    ```
 4. Open the app in your browser and explore demo data.
 
+## Container Deployment
+
+For production deployment, use the provided deployment script:
+
+```bash
+./deploy_container.sh [image_name] [container_name] [port]
+```
+
+Or manually ensure all required configuration:
+
+```bash
+podman run -d --name asma-proto-v10 -p 8765:5000 \
+  -v /opt/shared/spencerlong/asma-prototype/demo_data:/app/demo_data:ro \
+  -v /usr2/people/alex.styer/public_html:/app/alex_public_html:ro \
+  -e ASMA_DATA_DIR=/app/demo_data \
+  -e ALEX_PUBLIC_HTML_DIR=/app/alex_public_html \
+  --restart unless-stopped \
+  localhost/asma-prototype:main-latest
+```
+
+**⚠️ Important:** Both volume mounts and both environment variables are required. The application will log warnings at startup if configuration is incorrect.
+
 ---
 
 ## License

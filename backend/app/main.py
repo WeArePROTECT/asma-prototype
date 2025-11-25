@@ -305,6 +305,183 @@ def bin_pathways(bin_id: str):
         "pathways": pathways
     }
 
+# Taxonomy endpoints - serve Alex Styer's taxonomic table and treemap viewers
+ALEX_PUBLIC_HTML_DIR = Path(os.getenv("ALEX_PUBLIC_HTML_DIR", "/usr2/people/alex.styer/public_html"))
+TAXONOMY_TSV_PATH = ALEX_PUBLIC_HTML_DIR / "taxonomy.tsv"
+TAX_TABLE_HTML_PATH = ALEX_PUBLIC_HTML_DIR / "tax-table.html"
+TREEMAP_HTML_PATH = ALEX_PUBLIC_HTML_DIR / "protect-isolate-treemap.html"
+LOGO_BANNER_PATH = ALEX_PUBLIC_HTML_DIR / "logo-banner.png"
+
+@app.get("/api/taxonomy/tsv")
+def get_taxonomy_tsv():
+    """
+    Serve taxonomy.tsv file from Alex's directory.
+    Returns TSV content with proper content-type header.
+    Handles edge cases: missing file, permission errors, empty file.
+    """
+    if not TAXONOMY_TSV_PATH.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"taxonomy.tsv not found at {TAXONOMY_TSV_PATH}"
+        )
+    
+    if not TAXONOMY_TSV_PATH.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail=f"taxonomy.tsv path exists but is not a file: {TAXONOMY_TSV_PATH}"
+        )
+    
+    try:
+        with open(TAXONOMY_TSV_PATH, "r", encoding="utf-8") as f:
+            content = f.read()
+        
+        # Empty file is acceptable - return as-is
+        return Response(
+            content=content,
+            media_type="text/tab-separated-values",
+            headers={
+                "Content-Disposition": "inline; filename=taxonomy.tsv",
+                "Cache-Control": "public, max-age=3600"
+            }
+        )
+    except PermissionError:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Permission denied reading {TAXONOMY_TSV_PATH}"
+        )
+    except UnicodeDecodeError:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error decoding taxonomy.tsv: file is not valid UTF-8"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error reading taxonomy.tsv: {str(e)}"
+        )
+
+@app.get("/api/taxonomy/logo")
+def get_taxonomy_logo():
+    """
+    Serve logo-banner.png for taxonomic table viewer.
+    Returns PNG image file from Alex's directory.
+    """
+    if not LOGO_BANNER_PATH.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"logo-banner.png not found at {LOGO_BANNER_PATH}"
+        )
+    
+    try:
+        return FileResponse(
+            path=str(LOGO_BANNER_PATH),
+            media_type="image/png",
+            headers={
+                "Cache-Control": "public, max-age=86400"
+            }
+        )
+    except PermissionError:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Permission denied reading {LOGO_BANNER_PATH}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error reading logo-banner.png: {str(e)}"
+        )
+
+@app.get("/api/taxonomy/table")
+def get_taxonomy_table():
+    """
+    Serve tax-table.html viewer for taxonomic table.
+    Returns modified HTML file with API endpoint paths instead of relative paths.
+    Handles edge cases: missing file, permission errors, encoding issues.
+    """
+    if not TAX_TABLE_HTML_PATH.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"tax-table.html not found at {TAX_TABLE_HTML_PATH}"
+        )
+    
+    if not TAX_TABLE_HTML_PATH.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail=f"tax-table.html path exists but is not a file: {TAX_TABLE_HTML_PATH}"
+        )
+    
+    try:
+        with open(TAX_TABLE_HTML_PATH, "r", encoding="utf-8") as f:
+            html_content = f.read()
+        
+        # Replace relative paths with API endpoint paths
+        html_content = html_content.replace(
+            'fetch("taxonomy.tsv"',
+            'fetch("/api/taxonomy/tsv"'
+        )
+        html_content = html_content.replace(
+            'Papa.parse("taxonomy.tsv"',
+            'Papa.parse("/api/taxonomy/tsv"'
+        )
+        html_content = html_content.replace(
+            'src="logo-banner.png"',
+            'src="/api/taxonomy/logo"'
+        )
+        
+        return Response(
+            content=html_content,
+            media_type="text/html",
+            headers={
+                "Cache-Control": "public, max-age=3600"
+            }
+        )
+    except PermissionError:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Permission denied reading {TAX_TABLE_HTML_PATH}"
+        )
+    except UnicodeDecodeError:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error decoding tax-table.html: file is not valid UTF-8"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error reading tax-table.html: {str(e)}"
+        )
+
+@app.get("/api/taxonomy/treemap")
+def get_taxonomy_treemap():
+    """
+    Serve protect-isolate-treemap.html viewer for isolate treemap visualization.
+    Returns HTML file from Alex's directory.
+    """
+    if not TREEMAP_HTML_PATH.exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"protect-isolate-treemap.html not found at {TREEMAP_HTML_PATH}"
+        )
+    
+    try:
+        return FileResponse(
+            path=str(TREEMAP_HTML_PATH),
+            media_type="text/html",
+            headers={
+                "Cache-Control": "public, max-age=3600"
+            }
+        )
+    except PermissionError:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Permission denied reading {TREEMAP_HTML_PATH}"
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error reading protect-isolate-treemap.html: {str(e)}"
+        )
+
 # Serve frontend build
 STATIC_DIR = Path(__file__).resolve().parents[1] / "static"
 if STATIC_DIR.exists():

@@ -42,6 +42,12 @@ Through multiple sprints, the prototype currently supports:
 - Designed to swap `/demo_data/` for real datasets.  
 - Early containerization planned with Podman compatibility (FastAPI + static frontend).
 
+### 7. Taxonomic Table & Isolate Treemap Viewers
+- **Taxonomic Table Viewer** (`/api/taxonomy/table`) - Interactive DataTables view of ASMA isolate taxonomy data.
+- **Isolate Treemap Viewer** (`/api/taxonomy/treemap`) - Plotly treemap visualization of taxonomic hierarchy.
+- **Taxonomy Data** (`/api/taxonomy/tsv`) - Raw TSV data endpoint for programmatic access.
+- All endpoints read directly from Alex Styer's data directory to stay in sync.
+
 ---
 
 ## Roadmap & Vision

@@ -150,6 +150,36 @@ export default function Header() {
               >
                 PROTECT GenomeDepot
               </a>
+              <a
+                href="https://protect.qb3.berkeley.edu/asma/api/taxonomy/table"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={dropdownItemStyle()}
+                onClick={() => setIsDropdownOpen(false)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#f3f4f6";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                }}
+              >
+                PROTECT Taxonomic Data Table
+              </a>
+              <a
+                href="https://protect.qb3.berkeley.edu/asma/api/taxonomy/treemap"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={dropdownItemStyle()}
+                onClick={() => setIsDropdownOpen(false)}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "#f3f4f6";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                }}
+              >
+                PROTECT Taxonomy Treemap
+              </a>
             </div>
           )}
         </div>

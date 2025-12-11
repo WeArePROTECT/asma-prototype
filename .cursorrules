@@ -1,0 +1,29 @@
+# Cursor Project Rules
+
+naming_convention: snake_case
+
+coding_standards:
+  - clear variable names
+  - meaningful file names
+  - avoid unused code
+  - explain complex logic in comments
+
+testing:
+  - generate tests for each function or major change
+  - store all tests in ./tests directory
+
+documentation:
+  - summarize changes after each task
+  - ask user for the date before writing documentation
+  - describe purpose, inputs, outputs, and side effects
+  - include edge case notes
+
+git:
+  default_branch: dev
+  never_commit_directly_to_main: true
+  require_user_confirmation_before_merging_to_main: true
+
+communication:
+  - always ask clarifying questions
+  - always show step-by-step plan before coding
+  - confirm each step before continuing

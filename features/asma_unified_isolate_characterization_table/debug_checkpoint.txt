@@ -1,0 +1,87 @@
+[2025-12-09 17:10:38] ================================================================================
+[2025-12-09 17:10:38] DEBUG SCRIPT STARTED
+[2025-12-09 17:10:38] ================================================================================
+[2025-12-09 17:10:38] CHECKPOINT 1: Loading phenotype Excel file...
+[2025-12-09 17:10:43] CHECKPOINT 1 COMPLETE: Loaded 5 sheets
+[2025-12-09 17:10:43] CHECKPOINT 2: Extracting control sheet...
+[2025-12-09 17:10:43] CHECKPOINT 2 COMPLETE: Control shape (423, 7)
+[2025-12-09 17:10:43] CHECKPOINT 3: Analyzing control data...
+[2025-12-09 17:10:43] Control columns: ['sample_id', 'ASMA_id', 'type', 'assay_start_date', 'starting_OD', 'gain', 'raw_RFU']
+[2025-12-09 17:10:43] Control shape: (423, 7)
+[2025-12-09 17:10:43] CHECKPOINT 4: Gain value counts...
+[2025-12-09 17:10:43] gain value_counts:
+150    165
+175    129
+200    129
+Name: gain, dtype: int64
+[2025-12-09 17:10:43] CHECKPOINT 5: Type value counts...
+[2025-12-09 17:10:43] type value_counts:
+Reporter    231
+WT          192
+Name: type, dtype: int64
+[2025-12-09 17:10:43] CHECKPOINT 6: Starting OD analysis...
+[2025-12-09 17:10:43] starting_OD dtype: float64
+[2025-12-09 17:10:43] starting_OD value_counts (sorted, top 20):
+0.00001     12
+0.00010    135
+0.01000    276
+Name: starting_OD, dtype: int64
+[2025-12-09 17:10:43] CHECKPOINT 7: Filtering to reporter-only, gain=150...
+[2025-12-09 17:10:43] CHECKPOINT 7 COMPLETE: 0 rows
+[2025-12-09 17:10:43] CHECKPOINT 8: Reporter-only starting OD counts...
+[2025-12-09 17:10:43] Reporter-only, gain=150 starting_OD value_counts:
+Series([], Name: starting_OD, dtype: int64)
+[2025-12-09 17:10:43] CHECKPOINT 9: Checking for 0.0001...
+[2025-12-09 17:10:43] Has starting_OD == 0.0001: False
+[2025-12-09 17:10:43] CHECKPOINT 10: Applying CONTROL_EXCLUSIONS...
+[2025-12-09 17:10:43] CONTROL_EXCLUSIONS: [{'starting_OD': 0.01, 'assay_start_date': '2025-11-11'}]
+[2025-12-09 17:10:43] Before exclusions: 0 rows
+[2025-12-09 17:10:43] starting_OD value_counts (no exclusions):
+Series([], Name: starting_OD, dtype: int64)
+[2025-12-09 17:10:43] After exclusions: 0 rows
+[2025-12-09 17:10:43] starting_OD value_counts (with exclusions):
+Series([], Name: starting_OD, dtype: int64)
+[2025-12-09 17:10:43] Has starting_OD == 0.0001 (no exclusions): False
+[2025-12-09 17:10:43] Has starting_OD == 0.0001 (with exclusions): False
+[2025-12-09 17:10:43] CHECKPOINT 11: Grouping control by starting_OD...
+[2025-12-09 17:10:43] CHECKPOINT 11 COMPLETE: 0 unique starting_OD values
+[2025-12-09 17:10:43] Control grouped:
+Empty DataFrame
+Columns: [starting_OD, rfu_reporter_mean]
+Index: []
+[2025-12-09 17:10:43] CHECKPOINT 12: Loading pairwise data...
+[2025-12-09 17:10:43] CHECKPOINT 12 COMPLETE: Pairwise shape (1626, 8)
+[2025-12-09 17:10:43] CHECKPOINT 13: Filtering pairwise to gain=150...
+[2025-12-09 17:10:43] CHECKPOINT 13 COMPLETE: 754 rows
+[2025-12-09 17:10:43] CHECKPOINT 14: Filtering to reporter...
+[2025-12-09 17:10:43] CHECKPOINT 14 COMPLETE: 754 rows
+[2025-12-09 17:10:43] CHECKPOINT 15: Computing ratios...
+[2025-12-09 17:10:43] CHECKPOINT 15 COMPLETE
+[2025-12-09 17:10:43] CHECKPOINT 16: Filtering to 100:1 ratio...
+[2025-12-09 17:10:43] CHECKPOINT 16 COMPLETE: 324 rows
+[2025-12-09 17:10:43] CHECKPOINT 17: Analyzing 100x starting ODs...
+[2025-12-09 17:10:43] bacterium_2_starting_OD distribution in 100x rows:
+0.0001    324
+Name: bacterium_2_starting_OD, dtype: int64
+[2025-12-09 17:10:43] CHECKPOINT 18: Performing merge...
+[2025-12-09 17:10:43] CHECKPOINT 18 COMPLETE: 324 rows after merge
+[2025-12-09 17:10:43] CHECKPOINT 19: Analyzing merge results...
+[2025-12-09 17:10:43] Rows with matching control: 0
+[2025-12-09 17:10:43] Rows with null control: 324
+[2025-12-09 17:10:43] Unique bacterium_2_starting_OD in 100x pairwise: [0.0001]
+[2025-12-09 17:10:43] Unique starting_OD in control (grouped): []
+[2025-12-09 17:10:43] Matching ODs: []
+[2025-12-09 17:10:43] Missing from control: [0.0001]
+[2025-12-09 17:10:43] CHECKPOINT 20: Final summary...
+[2025-12-09 17:10:43] ================================================================================
+[2025-12-09 17:10:43] SUMMARY
+[2025-12-09 17:10:43] ================================================================================
+[2025-12-09 17:10:43] Control rows (reporter, gain=150, no exclusions): 0
+[2025-12-09 17:10:43] Control rows (reporter, gain=150, with exclusions): 0
+[2025-12-09 17:10:43] Has starting_OD == 0.0001 (no exclusions): False
+[2025-12-09 17:10:43] Has starting_OD == 0.0001 (with exclusions): False
+[2025-12-09 17:10:43] 100x pairwise rows: 324
+[2025-12-09 17:10:43] 100x rows with matching control: 0
+[2025-12-09 17:10:43] ================================================================================
+[2025-12-09 17:10:43] DEBUG SCRIPT COMPLETE!
+[2025-12-09 17:10:43] ================================================================================

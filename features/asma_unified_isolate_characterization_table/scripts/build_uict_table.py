@@ -18,7 +18,7 @@ from etl.loaders import (
     validate_taxonomy_data,
     validate_phenotype_data
 )
-from etl.scfm import process_scfm_growth_curve, aggregate_scfm_by_asma_id
+from etl.scfm import validate_scfm_dataset, process_scfm_growth_curve, aggregate_scfm_by_asma_id
 from etl.inhibition import (
     process_inhibition_control,
     process_pairwise_interactions,
@@ -60,7 +60,10 @@ def build_uict_v1(
     print(f"  Loaded {len(phenotype_sheets)} sheets")
     
     print("\nProcessing SCFM growth data...")
-    scfm_raw = process_scfm_growth_curve(phenotype_sheets['SCFM_growth_curve'])
+    scfm_df = phenotype_sheets['SCFM_growth_curve']
+    validate_scfm_dataset(scfm_df)
+    print("  SCFM dataset validation passed")
+    scfm_raw = process_scfm_growth_curve(scfm_df)
     scfm_agg = aggregate_scfm_by_asma_id(scfm_raw)
     print(f"  Processed {len(scfm_raw)} replicates for {len(scfm_agg)} isolates")
     

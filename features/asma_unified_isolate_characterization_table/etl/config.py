@@ -23,6 +23,23 @@ SCFM_DELTA_OD_THRESHOLDS = {
     "robust": float('inf')  # delta_od >= 0.2
 }
 
+# Phase 1 SCFM Time Point Constants
+SCFM_CYCLE_24H = 97  # 24-hour time point
+SCFM_CYCLE_48H = 193  # 48-hour time point
+SCFM_CYCLE_BASELINE = 1  # Baseline cycle, typically cycle 1
+
+# Phase 1 SCFM Growth Threshold
+SCFM_GROWTH_DELTA_OD_THRESHOLD = 0.1  # Default threshold for binary growth calls (configurable)
+
+# Phase 1 SCFM Time Conversion
+SCFM_CYCLE_INTERVAL_HOURS = 0.25  # 15 minutes = 0.25 hours per cycle
+
+# Phase 1 SCFM μ (mu_simple) Estimation Configuration
+SCFM_MU_WINDOW_MIN_CYCLES = 8  # Minimum window size for μ estimation
+SCFM_MU_WINDOW_MAX_CYCLES = 12  # Maximum window size for μ estimation
+SCFM_MU_MIN_OD = 0.01  # Epsilon cutoff for log(OD) - filter out OD values <= this
+SCFM_MU_MIN_R2 = 0.95  # Minimum R² threshold for acceptable μ fit (configurable)
+
 # PA Inhibition Classification Thresholds (inhibition percentage)
 INHIBITION_THRESHOLDS = {
     "none": 25,          # inhib_100x_mean < 25

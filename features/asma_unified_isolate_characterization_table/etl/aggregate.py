@@ -37,9 +37,20 @@ def merge_uict_data(
             how='left'
         )
     else:
-        # Add empty SCFM columns
+        # Add empty SCFM columns (including Phase 1 metrics)
         scfm_cols = ['scfm_n_reps', 'scfm_delta_od_mean', 'scfm_delta_od_sd',
-                     'scfm_delta_od_max', 'scfm_growth_class', 'scfm_last_assay_date']
+                     'scfm_delta_od_max', 'scfm_growth_class', 'scfm_last_assay_date',
+                     # Phase 1 metrics
+                     'scfm_od_24h_mean', 'scfm_od_24h_sd',
+                     'scfm_od_48h_mean', 'scfm_od_48h_sd',
+                     'scfm_delta_od_24h_mean', 'scfm_delta_od_24h_sd',
+                     'scfm_delta_od_48h_mean', 'scfm_delta_od_48h_sd',
+                     'scfm_growth_24h_n', 'scfm_growth_24h_pct',
+                     'scfm_growth_48h_n', 'scfm_growth_48h_pct',
+                     'scfm_od_max_yield_mean', 'scfm_od_max_yield_sd',
+                     'scfm_time_max_yield_mean', 'scfm_time_max_yield_sd',
+                     'scfm_mu_simple_mean', 'scfm_mu_simple_sd', 'scfm_mu_simple_n_reps',
+                     'scfm_mu_simple_r2_mean', 'scfm_mu_simple_r2_sd']
         for col in scfm_cols:
             uict[col] = pd.NA
     
@@ -71,14 +82,25 @@ def merge_uict_data(
     
     # Ensure all phenotype columns are properly typed
     # Integer columns
-    int_cols = ['scfm_n_reps', 'inhib_100x_n']
+    int_cols = ['scfm_n_reps', 'inhib_100x_n',
+                'scfm_growth_24h_n', 'scfm_growth_48h_n', 'scfm_mu_simple_n_reps']
     for col in int_cols:
         if col in uict.columns:
             uict[col] = pd.to_numeric(uict[col], errors='coerce').astype('Int64')
     
     # Float columns
     float_cols = ['scfm_delta_od_mean', 'scfm_delta_od_sd', 'scfm_delta_od_max',
-                  'inhib_100x_mean', 'inhib_100x_sd']
+                  'inhib_100x_mean', 'inhib_100x_sd',
+                  # Phase 1 float columns
+                  'scfm_od_24h_mean', 'scfm_od_24h_sd',
+                  'scfm_od_48h_mean', 'scfm_od_48h_sd',
+                  'scfm_delta_od_24h_mean', 'scfm_delta_od_24h_sd',
+                  'scfm_delta_od_48h_mean', 'scfm_delta_od_48h_sd',
+                  'scfm_growth_24h_pct', 'scfm_growth_48h_pct',
+                  'scfm_od_max_yield_mean', 'scfm_od_max_yield_sd',
+                  'scfm_time_max_yield_mean', 'scfm_time_max_yield_sd',
+                  'scfm_mu_simple_mean', 'scfm_mu_simple_sd',
+                  'scfm_mu_simple_r2_mean', 'scfm_mu_simple_r2_sd']
     for col in float_cols:
         if col in uict.columns:
             uict[col] = pd.to_numeric(uict[col], errors='coerce')

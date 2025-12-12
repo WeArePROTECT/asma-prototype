@@ -270,3 +270,6 @@ Thumbs.db
 # Re-include frontend/src/lib
 !frontend/src/lib/
 !frontend/src/lib/*.ts
+
+# Data
+.csv

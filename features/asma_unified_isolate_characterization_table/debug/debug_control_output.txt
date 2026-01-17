@@ -1,0 +1,143 @@
+================================================================================
+1. INSPECT REPORTER-ONLY, GAIN=150 CONTROLS
+================================================================================
+
+Control columns: ['sample_id', 'ASMA_id', 'type', 'assay_start_date', 'starting_OD', 'gain', 'raw_RFU']
+
+df_control.head(10):
+   sample_id      ASMA_id type  assay_start_date  starting_OD  gain  raw_RFU
+0          1  PA14_KEH108   WT          20250924         0.01   150      6.8
+1          2  PA14_KEH108   WT          20250924         0.01   150      6.6
+2          3  PA14_KEH108   WT          20250924         0.01   150      5.4
+3          4  PA14_KEH108   WT          20250924         0.01   150      6.2
+4          5  PA14_KEH108   WT          20250924         0.01   150      6.6
+5          6  PA14_KEH108   WT          20250924         0.01   150      4.6
+6          7  PA14_KEH108   WT          20250924         0.01   150      5.6
+7          8  PA14_KEH108   WT          20250924         0.01   150      5.2
+8          9  PA14_KEH108   WT          20250924         0.01   175     24.6
+9         10  PA14_KEH108   WT          20250924         0.01   175     25.8
+
+gain value_counts:
+150    165
+175    129
+200    129
+Name: gain, dtype: int64
+
+type value_counts:
+Reporter    231
+WT          192
+Name: type, dtype: int64
+
+starting_OD dtype: float64
+
+starting_OD value_counts (sorted):
+0.00001     12
+0.00010    135
+0.01000    276
+Name: starting_OD, dtype: int64
+
+Reporter-only, gain=150 rows: 0
+
+Reporter-only, gain=150 starting_OD value_counts (sorted):
+Series([], Name: starting_OD, dtype: int64)
+
+df_control_rep_150.head(10):
+Empty DataFrame
+Columns: [sample_id, ASMA_id, type, assay_start_date, starting_OD, gain, raw_RFU]
+Index: []
+
+================================================================================
+2. INSPECT CONTROL_EXCLUSIONS USAGE
+================================================================================
+
+CONTROL_EXCLUSIONS from config: [{'starting_OD': 0.01, 'assay_start_date': '2025-11-11'}]
+
+Exclusion logic from etl/inhibition.py (lines 30-35):
+  for exclusion in CONTROL_EXCLUSIONS:
+      for key, value in exclusion.items():
+          if key in df_filtered.columns:
+              if isinstance(value, str):
+                  df_filtered = df_filtered[df_filtered[key] != value]
+              else:
+                  df_filtered = df_filtered[df_filtered[key] != value]
+
+Reporter-only, gain=150 (NO exclusions): 0 rows
+starting_OD value_counts (no exclusions):
+Series([], Name: starting_OD, dtype: int64)
+
+Applying CONTROL_EXCLUSIONS...
+
+Reporter-only, gain=150 (WITH exclusions): 0 rows
+starting_OD value_counts (with exclusions):
+Series([], Name: starting_OD, dtype: int64)
+
+Has starting_OD == 0.0001 (no exclusions): False
+Has starting_OD == 0.0001 (with exclusions): False
+
+Control grouped by starting_OD (0 unique values):
+Empty DataFrame
+Columns: [starting_OD, rfu_reporter_mean]
+Index: []
+
+================================================================================
+3. RE-RUN THE JOIN WITH DEBUG LENS
+================================================================================
+
+100x rows: 324
+
+bacterium_2_starting_OD distribution in 100x rows:
+0.0001    324
+Name: bacterium_2_starting_OD, dtype: int64
+
+Merge logic from etl/inhibition.py (lines 96-101):
+  df_100x = df_100x.merge(
+      control_df,
+      left_on='bacterium_2_starting_OD',
+      right_on='starting_OD',
+      how='left'
+  )
+
+Rows after join: 324
+
+Control RFU columns: ['raw_RFU', 'rfu_reporter_mean']
+  raw_RFU non-null count: 324 / 324
+  rfu_reporter_mean non-null count: 0 / 324
+
+Rows with matching control (rfu_reporter_mean not null): 0
+Rows with null control: 324
+
+df_merged_dbg.head(10):
+  bacterium_1_ASMA_id  bacterium_2_starting_OD  starting_OD  raw_RFU  rfu_reporter_mean
+0            ASMA-230                   0.0001          NaN     26.6                NaN
+1            ASMA-230                   0.0001          NaN     23.2                NaN
+2            ASMA-230                   0.0001          NaN     19.2                NaN
+3            ASMA-452                   0.0001          NaN    134.2                NaN
+4            ASMA-452                   0.0001          NaN    123.6                NaN
+5            ASMA-452                   0.0001          NaN    120.8                NaN
+6            ASMA-683                   0.0001          NaN      9.4                NaN
+7            ASMA-683                   0.0001          NaN     35.0                NaN
+8            ASMA-683                   0.0001          NaN     29.6                NaN
+9            ASMA-737                   0.0001          NaN     10.8                NaN
+
+Sample rows with NO matching control (first 5):
+  bacterium_1_ASMA_id  bacterium_2_starting_OD  raw_RFU
+0            ASMA-230                   0.0001     26.6
+1            ASMA-230                   0.0001     23.2
+2            ASMA-230                   0.0001     19.2
+3            ASMA-452                   0.0001    134.2
+4            ASMA-452                   0.0001    123.6
+
+Unique bacterium_2_starting_OD in 100x pairwise: [0.0001]
+Unique starting_OD in control (grouped): []
+Matching ODs: []
+Missing from control: [0.0001]
+
+================================================================================
+SUMMARY
+================================================================================
+Control rows (reporter, gain=150, no exclusions): 0
+Control rows (reporter, gain=150, with exclusions): 0
+Has starting_OD == 0.0001 (no exclusions): False
+Has starting_OD == 0.0001 (with exclusions): False
+100x pairwise rows: 324
+100x rows with matching control: 0

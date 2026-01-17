@@ -1,0 +1,81 @@
+Loading data...
+
+================================================================================
+1. CONTROL DATA INSPECTION
+================================================================================
+
+df_control.columns: ['sample_id', 'ASMA_id', 'type', 'assay_start_date', 'starting_OD', 'gain', 'raw_RFU']
+
+df_control.shape: (423, 7)
+
+df_control.head(5):
+   sample_id      ASMA_id type  assay_start_date  starting_OD  gain  raw_RFU
+0          1  PA14_KEH108   WT          20250924         0.01   150      6.8
+1          2  PA14_KEH108   WT          20250924         0.01   150      6.6
+2          3  PA14_KEH108   WT          20250924         0.01   150      5.4
+3          4  PA14_KEH108   WT          20250924         0.01   150      6.2
+4          5  PA14_KEH108   WT          20250924         0.01   150      6.6
+
+gain value_counts:
+150    165
+175    129
+200    129
+Name: gain, dtype: int64
+
+type value_counts:
+Reporter    231
+WT          192
+Name: type, dtype: int64
+
+starting_OD dtype: float64
+starting_OD value_counts (sorted, top 10):
+0.00001     12
+0.00010    135
+0.01000    276
+Name: starting_OD, dtype: int64
+
+Reporter-only, gain=150 rows: 0
+
+Reporter-only, gain=150 starting_OD value_counts (sorted):
+Series([], Name: starting_OD, dtype: int64)
+
+Control grouped by starting_OD (0 unique values):
+Empty DataFrame
+Columns: [starting_OD, rfu_reporter_mean]
+Index: []
+
+================================================================================
+2. PAIRWISE 100X DATA
+================================================================================
+
+100x rows: 324
+
+bacterium_2_starting_OD dtype: float64
+bacterium_2_starting_OD value_counts (sorted):
+0.0001    324
+Name: bacterium_2_starting_OD, dtype: int64
+
+================================================================================
+3. MERGE ANALYSIS
+================================================================================
+
+Join logic from etl/inhibition.py:
+  left_on='bacterium_2_starting_OD' (from pairwise)
+  right_on='starting_OD' (from control)
+  how='left'
+
+100x rows before merge: 324
+100x rows after merge: 324
+Rows with matching controls (rfu_reporter_mean not null): 0
+Rows with null controls: 324
+
+Unique bacterium_2_starting_OD in 100x pairwise: [0.0001]
+Unique starting_OD in control (grouped): []
+Matching ODs: []
+Missing from control: [0.0001]
+
+Sample rows with no matching control (first 3):
+  bacterium_1_ASMA_id  bacterium_2_starting_OD  raw_RFU
+0            ASMA-230                   0.0001     26.6
+1            ASMA-230                   0.0001     23.2
+2            ASMA-230                   0.0001     19.2

@@ -1,0 +1,28 @@
+# asma-watchdog.timer
+# Template for THAR ASMA prototype health watchdog timer
+#
+# IMPORTANT: This is a TEMPLATE/REFERENCE copy.
+# Live location on THAR: ~/.config/systemd/user/asma-watchdog.timer
+#
+# Installation:
+# 1. Copy to ~/.config/systemd/user/asma-watchdog.timer
+# 2. systemctl --user daemon-reload
+# 3. systemctl --user enable --now asma-watchdog.timer
+# 4. Verify: systemctl --user status asma-watchdog.timer
+#
+# Rollback:
+# systemctl --user disable --now asma-watchdog.timer
+
+[Unit]
+Description=ASMA Prototype Health Watchdog Timer
+Documentation=man:systemd.timer(5)
+After=network-online.target
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=2min
+RandomizedDelaySec=30s
+Unit=asma-watchdog.service
+
+[Install]
+WantedBy=timers.target

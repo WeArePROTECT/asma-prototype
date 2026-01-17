@@ -1,0 +1,30 @@
+# container-asma-proto.service
+# Template for THAR ASMA prototype container auto-start
+#
+# IMPORTANT: This is a TEMPLATE/REFERENCE copy.
+# Live location on THAR: ~/.config/systemd/user/container-asma-proto.service
+#
+# Installation:
+# 1. Copy to ~/.config/systemd/user/container-asma-proto.service
+# 2. systemctl --user daemon-reload
+# 3. systemctl --user enable container-asma-proto.service
+# 4. systemctl --user start container-asma-proto.service
+#
+# Rollback:
+# systemctl --user disable --now container-asma-proto.service
+
+[Unit]
+Description=Podman container asma-proto-v10
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/podman start asma-proto-v10
+ExecStop=/usr/bin/podman stop -t 10 asma-proto-v10
+TimeoutStartSec=120
+TimeoutStopSec=70
+
+[Install]
+WantedBy=default.target

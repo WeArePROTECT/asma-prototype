@@ -1,0 +1,51 @@
+Control columns: ['sample_id', 'ASMA_id', 'type', 'assay_start_date', 'starting_OD', 'gain', 'raw_RFU']
+Control shape: (423, 7)
+gain value_counts:
+150    165
+175    129
+200    129
+Name: gain, dtype: int64
+type value_counts:
+Reporter    231
+WT          192
+Name: type, dtype: int64
+starting_OD dtype: float64
+starting_OD value_counts (sorted, top 20):
+0.00001     12
+0.00010    135
+0.01000    276
+Name: starting_OD, dtype: int64
+Reporter-only, gain=150 starting_OD value_counts:
+Series([], Name: starting_OD, dtype: int64)
+Has starting_OD == 0.0001: False
+CONTROL_EXCLUSIONS: [{'starting_OD': 0.01, 'assay_start_date': '2025-11-11'}]
+Before exclusions: 0 rows
+starting_OD value_counts (no exclusions):
+Series([], Name: starting_OD, dtype: int64)
+After exclusions: 0 rows
+starting_OD value_counts (with exclusions):
+Series([], Name: starting_OD, dtype: int64)
+Has starting_OD == 0.0001 (no exclusions): False
+Has starting_OD == 0.0001 (with exclusions): False
+Control grouped:
+Empty DataFrame
+Columns: [starting_OD, rfu_reporter_mean]
+Index: []
+bacterium_2_starting_OD distribution in 100x rows:
+0.0001    324
+Name: bacterium_2_starting_OD, dtype: int64
+Rows with matching control: 0
+Rows with null control: 324
+Unique bacterium_2_starting_OD in 100x pairwise: [0.0001]
+Unique starting_OD in control (grouped): []
+Matching ODs: []
+Missing from control: [0.0001]
+================================================================================
+SUMMARY
+================================================================================
+Control rows (reporter, gain=150, no exclusions): 0
+Control rows (reporter, gain=150, with exclusions): 0
+Has starting_OD == 0.0001 (no exclusions): False
+Has starting_OD == 0.0001 (with exclusions): False
+100x pairwise rows: 324
+100x rows with matching control: 0

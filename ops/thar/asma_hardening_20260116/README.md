@@ -232,6 +232,18 @@ podman stop asma-proto-v10
 
 These deployed paths will NOT change automatically - we are only moving repo templates. Existing deployments continue to work. If reinstalling units, use the new paths from this packet.
 
+### Deployed Systems and Path Migration
+
+**Deployed systems may still reference old watchdog paths.** This is intentional to avoid breaking running systems during the repo reorganization (2026-01-17).
+
+**What this means:**
+- Currently deployed systemd units at `~/.config/systemd/user/asma-watchdog.service` may reference the old path: `/usr2/people/spencerlong/asma-prototype/ops/watchdog/asma_watchdog.sh`
+- The watchdog script template has been moved to: `ops/thar/asma_hardening_20260116/watchdog/asma_watchdog.sh`
+- **Reinstalling systemd units is required to adopt new template paths** - simply copying the new templates and updating ExecStart paths in the deployed units
+- The runtime cooldown file (`.asma_last_restart_epoch`) remains in its original location to maintain compatibility
+
+**This is intentional:** The reorganization was repo-only to avoid runtime behavior changes. Deployed systems continue to work with their existing paths until units are manually reinstalled with updated paths.
+
 ### ASMA Has No Database
 
 ASMA is a single-container FastAPI application with no database. The watchdog has no DB guardrail (unlike GenomeDepot).

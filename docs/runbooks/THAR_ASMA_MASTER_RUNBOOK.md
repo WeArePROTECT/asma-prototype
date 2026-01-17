@@ -62,7 +62,7 @@ This name is fixed. Do not create containers with different names.
 - **Demo data:** `/opt/shared/spencerlong/asma-prototype/demo_data` (mounted to `/app/demo_data`)
 - **Alex's taxonomy files:** `/usr2/people/alex.styer/public_html` (mounted to `/app/alex_public_html`, read-only)
 - **Ops scripts:** `/usr2/people/spencerlong/asma-prototype/ops/`
-- **Watchdog cooldown file:** `/usr2/people/spencerlong/asma-prototype/ops/watchdog/.asma_last_restart_epoch`
+- **Watchdog cooldown file:** `/usr2/people/spencerlong/asma-prototype/ops/watchdog/.asma_last_restart_epoch` (runtime file, remains in old location for deployed systems)
 
 ### Environment Variables
 
@@ -96,7 +96,7 @@ This container MUST exist:
 
 - `/opt/shared/spencerlong/asma-prototype/demo_data/` (demo data directory)
 - `/usr2/people/alex.styer/public_html/` (Alex's taxonomy files)
-- Systemd unit templates in repo: `ops/systemd_user_units/`
+- Systemd unit templates in repo: `ops/thar/asma_hardening_20260116/systemd_user_units/`
 
 ### Auto-Start Status
 
@@ -425,7 +425,7 @@ podman start asma-proto-v10
 
 **Action:**
 - **DO NOT ENABLE** this unit
-- New unit template is in repo: `ops/systemd_user_units/container-asma-proto.service`
+- New unit template is in repo: `ops/thar/asma_hardening_20260116/systemd_user_units/container-asma-proto.service`
 - Install new unit following Section 13
 
 **Verification:**
@@ -577,7 +577,7 @@ Auto-restart is implemented via systemd user services. Containers start automati
 
 ```bash
 # Copy template to systemd user directory
-cp /usr2/people/spencerlong/asma-prototype/ops/systemd_user_units/container-asma-proto.service \
+cp /usr2/people/spencerlong/asma-prototype/ops/thar/asma_hardening_20260116/systemd_user_units/container-asma-proto.service \
    ~/.config/systemd/user/container-asma-proto.service
 
 # Reload systemd
@@ -595,14 +595,15 @@ systemctl --user status container-asma-proto.service
 
 ```bash
 # Copy watchdog script (already executable)
-# Script location: /usr2/people/spencerlong/asma-prototype/ops/watchdog/asma_watchdog.sh
+# Script location: /usr2/people/spencerlong/asma-prototype/ops/thar/asma_hardening_20260116/watchdog/asma_watchdog.sh
+# NOTE: If installing fresh, update ExecStart path in asma-watchdog.service to match script location
 
 # Copy watchdog service
-cp /usr2/people/spencerlong/asma-prototype/ops/systemd_user_units/asma-watchdog.service \
+cp /usr2/people/spencerlong/asma-prototype/ops/thar/asma_hardening_20260116/systemd_user_units/asma-watchdog.service \
    ~/.config/systemd/user/asma-watchdog.service
 
 # Copy watchdog timer
-cp /usr2/people/spencerlong/asma-prototype/ops/systemd_user_units/asma-watchdog.timer \
+cp /usr2/people/spencerlong/asma-prototype/ops/thar/asma_hardening_20260116/systemd_user_units/asma-watchdog.timer \
    ~/.config/systemd/user/asma-watchdog.timer
 
 # Reload systemd

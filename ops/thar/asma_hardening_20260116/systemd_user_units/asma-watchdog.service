@@ -5,7 +5,8 @@
 # Live location on THAR: ~/.config/systemd/user/asma-watchdog.service
 #
 # NOTE: Edit ExecStart path to match actual watchdog script location on THAR
-# Current THAR path: /usr2/people/spencerlong/asma-prototype/ops/watchdog/asma_watchdog.sh
+# Repo template path: /usr2/people/spencerlong/asma-prototype/ops/thar/asma_hardening_20260116/watchdog/asma_watchdog.sh
+# NOTE: Deployed systems may use old path: /usr2/people/spencerlong/asma-prototype/ops/watchdog/asma_watchdog.sh
 #
 # Installation:
 # 1. Copy to ~/.config/systemd/user/asma-watchdog.service
@@ -25,7 +26,7 @@ Wants=network-online.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr2/people/spencerlong/asma-prototype/ops/watchdog/asma_watchdog.sh
+ExecStart=/usr2/people/spencerlong/asma-prototype/ops/thar/asma_hardening_20260116/watchdog/asma_watchdog.sh
 StandardOutput=journal
 StandardError=journal
 

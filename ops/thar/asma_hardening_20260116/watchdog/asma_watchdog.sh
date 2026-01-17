@@ -5,10 +5,11 @@
 # Hardened: cooldown, container-aware, accepts 200 as healthy
 #
 # IMPORTANT: This is a TEMPLATE/REFERENCE copy.
-# Live location on THAR: /usr2/people/spencerlong/asma-prototype/ops/watchdog/asma_watchdog.sh
+# Repo location: /usr2/people/spencerlong/asma-prototype/ops/thar/asma_hardening_20260116/watchdog/asma_watchdog.sh
+# NOTE: Deployed systems may use old path: /usr2/people/spencerlong/asma-prototype/ops/watchdog/asma_watchdog.sh
 #
 # Installation:
-# 1. Copy to desired location (e.g., /usr2/people/spencerlong/asma-prototype/ops/watchdog/asma_watchdog.sh)
+# 1. Copy to desired location (e.g., /usr2/people/spencerlong/asma-prototype/ops/thar/asma_hardening_20260116/watchdog/asma_watchdog.sh)
 # 2. Edit COOLDOWN_FILE path if needed (line 14)
 # 3. Make executable: chmod +x asma_watchdog.sh
 # 4. Update asma-watchdog.service ExecStart path to match

@@ -1,0 +1,33 @@
+# asma-watchdog.service
+# Template for THAR ASMA prototype health watchdog service
+#
+# IMPORTANT: This is a TEMPLATE/REFERENCE copy.
+# Live location on THAR: ~/.config/systemd/user/asma-watchdog.service
+#
+# NOTE: Edit ExecStart path to match actual watchdog script location on THAR
+# Current THAR path: /usr2/people/spencerlong/asma-prototype/ops/watchdog/asma_watchdog.sh
+#
+# Installation:
+# 1. Copy to ~/.config/systemd/user/asma-watchdog.service
+# 2. Edit ExecStart path if watchdog script is in different location
+# 3. systemctl --user daemon-reload
+# 4. Enable via timer: systemctl --user enable asma-watchdog.timer
+#
+# Rollback:
+# systemctl --user disable --now asma-watchdog.timer
+
+[Unit]
+Description=ASMA Prototype Health Watchdog
+Documentation=man:systemd.service(5)
+After=network-online.target
+After=container-asma-proto.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr2/people/spencerlong/asma-prototype/ops/watchdog/asma_watchdog.sh
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

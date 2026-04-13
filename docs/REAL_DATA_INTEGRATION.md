@@ -39,7 +39,7 @@ In a single session on April 12, 2026, the ASMA prototype was transitioned from 
 
 ### What the ASMA Prototype Is
 
-The ASMA (Arkin–Styer Microbiome Architect) prototype is a FastAPI + React web application for exploring PROTECT study microbial isolate data. The backend is a single-file FastAPI app (`backend/app/main.py`) that reads flat CSV and JSONL files from a data directory at startup and serves them through a REST API. The frontend is a Vite/React SPA built into the container's `/app/static/` directory. There is intentionally no live database connection — the app is stateless and the data files are the source of truth.
+The ASMA (Airway Synthetic Microbial Atlas) prototype is a FastAPI + React web application for exploring PROTECT study microbial isolate data. The backend is a single-file FastAPI app (`backend/app/main.py`) that reads flat CSV and JSONL files from a data directory at startup and serves them through a REST API. The frontend is a Vite/React SPA built into the container's `/app/static/` directory. There is intentionally no live database connection — the app is stateless and the data files are the source of truth.
 
 ### Why It Previously Used Fake Data
 
@@ -569,7 +569,9 @@ local/main         675ff94  feat: production ETL with Pydantic validation + real
 origin/feat/...    675ff94  (same — pushed to remote feature branch)
 ```
 
-Local `main` is **1 commit ahead of `origin/main`**. The running container is built from local `main` (commit `675ff94`) and is stable. `origin/main` will be updated once the PR is reviewed and merged.
+Local `main` is **1 commit ahead of `origin/main`**. The running container is built from local `main` (commit `675ff94`) and is stable.
+
+> ⚠️ **Action Required:** The PR `feat/pydantic-validation-real-data` must be reviewed and merged on GitHub to bring `origin/main` in sync with the running container. The container is stable and serving real data from local main (`675ff94`), but `origin/main` will not reflect this work until the PR is merged. Do not rebuild the container from `origin/main` until the merge is complete.
 
 ### What Is Not in Git
 

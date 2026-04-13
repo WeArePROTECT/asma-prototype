@@ -9,7 +9,6 @@ import csv
 import json
 import os
 import io
-from datetime import datetime
 from email.utils import formatdate
 
 from .schemas import Patient, Sample, Isolate  # noqa: E402

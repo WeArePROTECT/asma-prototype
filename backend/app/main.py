@@ -12,6 +12,8 @@ import io
 from datetime import datetime
 from email.utils import formatdate
 
+from .schemas import Patient, Sample, Isolate  # noqa: E402
+
 app = FastAPI(title="ASMA Demo API", version="0.3.7")
 
 REPO_ROOT: Path = Path(__file__).resolve().parents[2]
@@ -21,6 +23,35 @@ print(f"[ASMA] REPO_ROOT = {REPO_ROOT}")
 print(f"[ASMA] DATA_DIR  = {DATA_DIR}")
 if not DATA_DIR.exists():
     raise RuntimeError(f"Demo data folder not found: {DATA_DIR}. Set ASMA_DATA_DIR or DEMO_DATA_DIR.")
+
+# ── Required data files ───────────────────────────────────────────────────────
+
+_REQUIRED_FILES = [
+    "patients.csv",
+    "samples.csv",
+    "bins.jsonl",
+    "isolates.jsonl",
+    "interactions.json",
+    "prebiotics.csv",
+    "formulations.json",
+]
+
+_load_errors: Dict[str, str] = {}  # filename → error message
+
+
+def _startup_check() -> None:
+    """Log warnings for missing data files; do not crash."""
+    missing = [f for f in _REQUIRED_FILES if not (DATA_DIR / f).exists()]
+    if missing:
+        for fname in missing:
+            print(f"[ASMA] WARNING: required file missing: {DATA_DIR / fname}")
+    else:
+        print(f"[ASMA] All required data files present in {DATA_DIR}")
+
+
+_startup_check()
+
+# ── Loaders ───────────────────────────────────────────────────────────────────
 
 def load_csv(path: Path):
   with open(path, newline="", encoding="utf-8") as f:
@@ -41,13 +72,30 @@ def load_jsonl(path: Path):
     items.append(json.loads(line))
   return items
 
-patients     = load_csv(DATA_DIR / "patients.csv")
-samples      = load_csv(DATA_DIR / "samples.csv")
-bins         = load_jsonl(DATA_DIR / "bins.jsonl")
-isolates     = load_jsonl(DATA_DIR / "isolates.jsonl")
-interactions = load_json(DATA_DIR / "interactions.json")
-prebiotics   = load_csv(DATA_DIR / "prebiotics.csv")
-formulations = load_json(DATA_DIR / "formulations.json")
+
+def _safe_load(name: str, loader, path: Path, default):
+    """Load a data file; on any error log a warning and return default."""
+    try:
+        return loader(path)
+    except FileNotFoundError:
+        msg = f"{name}: file not found ({path})"
+        _load_errors[name] = msg
+        print(f"[ASMA] WARNING: {msg}")
+        return default
+    except Exception as exc:
+        msg = f"{name}: {type(exc).__name__}: {exc}"
+        _load_errors[name] = msg
+        print(f"[ASMA] WARNING: {msg}")
+        return default
+
+
+patients     = _safe_load("patients.csv",     load_csv,   DATA_DIR / "patients.csv",     [])
+samples      = _safe_load("samples.csv",      load_csv,   DATA_DIR / "samples.csv",      [])
+bins         = _safe_load("bins.jsonl",       load_jsonl, DATA_DIR / "bins.jsonl",       [])
+isolates     = _safe_load("isolates.jsonl",   load_jsonl, DATA_DIR / "isolates.jsonl",   [])
+interactions = _safe_load("interactions.json",load_json,  DATA_DIR / "interactions.json",{})
+prebiotics   = _safe_load("prebiotics.csv",   load_csv,   DATA_DIR / "prebiotics.csv",   [])
+formulations = _safe_load("formulations.json",load_json,  DATA_DIR / "formulations.json",[])
 
 PATIENT_INDEX  = {p.get("patient_id"): p for p in patients}
 SAMPLE_INDEX   = {s.get("sample_id"): s for s in samples}
@@ -71,14 +119,19 @@ app.add_middleware(
 def health():
   return {"status": "ok", "data_dir": str(DATA_DIR)}
 
-@app.get("/patients")
-def get_patients(): return patients
+@app.get("/patients", response_model=List[Patient])
+def get_patients():
+    if "patients.csv" in _load_errors:
+        raise HTTPException(status_code=500, detail=_load_errors["patients.csv"])
+    return patients
 
-@app.get("/samples")
+@app.get("/samples", response_model=List[Sample])
 def get_samples(patient_id: Optional[str] = None):
-  if patient_id:
-    return [s for s in samples if s.get("patient_id") == patient_id]
-  return samples
+    if "samples.csv" in _load_errors:
+        raise HTTPException(status_code=500, detail=_load_errors["samples.csv"])
+    if patient_id:
+        return [s for s in samples if s.get("patient_id") == patient_id]
+    return samples
 
 @app.get("/samples/{sample_id}/abundance")
 def sample_abundance(sample_id: str):
@@ -104,20 +157,32 @@ def get_bins(sample_id: Optional[str] = None):
     return [b for b in bins if b.get("sample_id") == sample_id]
   return bins
 
-@app.get("/isolates")
+@app.get("/isolates", response_model=List[Isolate])
 def get_isolates(sample_id: Optional[str] = None, bin_id: Optional[str] = None):
-  data = isolates
-  if sample_id:
-    data = [i for i in data if i.get("source_sample_id") == sample_id or i.get("sample_id") == sample_id]
-  if bin_id:
-    data = [i for i in data if i.get("linked_bins") and bin_id in i.get("linked_bins")]
-  return data
+    if "isolates.jsonl" in _load_errors:
+        raise HTTPException(status_code=500, detail=_load_errors["isolates.jsonl"])
+    data = isolates
+    if sample_id:
+        # support both new field (sample_id) and legacy field (source_sample_id)
+        data = [i for i in data
+                if i.get("sample_id") == sample_id
+                or i.get("source_sample_id") == sample_id]
+    if bin_id:
+        # support both new singular (linked_bin) and legacy list (linked_bins)
+        data = [i for i in data
+                if i.get("linked_bin") == bin_id
+                or (isinstance(i.get("linked_bins"), list)
+                    and bin_id in i["linked_bins"])]
+    return data
 
-@app.get("/isolates/{isolate_id}")
+@app.get("/isolates/{isolate_id}", response_model=Isolate)
 def get_isolate(isolate_id: str):
-  it = ISOLATE_INDEX.get(isolate_id)
-  if not it: raise HTTPException(status_code=404, detail="isolate not found")
-  return it
+    if "isolates.jsonl" in _load_errors:
+        raise HTTPException(status_code=500, detail=_load_errors["isolates.jsonl"])
+    it = ISOLATE_INDEX.get(isolate_id)
+    if not it:
+        raise HTTPException(status_code=404, detail="isolate not found")
+    return it
 
 @app.get("/prebiotics")
 def get_prebiotics(): return prebiotics
@@ -133,7 +198,11 @@ def get_network(isolate_id: Optional[str] = None, type: Optional[str] = Query(No
   ids = set()
   for e in edges:
     ids.add(e.get("source_isolate")); ids.add(e.get("target_isolate"))
-  nodes = [{"id": nid, "label": ISOLATE_INDEX.get(nid, {}).get("taxid_genus", nid)} for nid in ids if nid]
+  nodes = [{"id": nid, "label": (
+      ISOLATE_INDEX.get(nid, {}).get("genus")             # new field name
+      or ISOLATE_INDEX.get(nid, {}).get("taxid_genus")    # legacy field name
+      or nid
+  )} for nid in ids if nid]
   edgelist = [{"source": e.get("source_isolate"), "target": e.get("target_isolate"), "type": e.get("type"), "score": e.get("score", 0.0)} for e in edges]
   return {"nodes": nodes, "edges": edgelist}
 
@@ -197,6 +266,19 @@ def preview_formulation(payload: FormPreviewIn, debug: Optional[int] = 0):
     return bd
   return {"score_predicted": bd["score_predicted"], "notes": notes or ["No notable interactions"]}
 
+def _iso_links_any(iso: dict, bin_ids: set) -> bool:
+    """Return True if the isolate references any bin_id in bin_ids.
+    Handles both new singular linked_bin (str) and legacy linked_bins (list).
+    """
+    lb = iso.get("linked_bin")
+    if lb and lb in bin_ids:
+        return True
+    lbs = iso.get("linked_bins")
+    if isinstance(lbs, list):
+        return any(b in bin_ids for b in lbs)
+    return False
+
+
 # Lineage endpoints
 @app.get("/lineage/patient/{patient_id}")
 def lineage_patient(patient_id: str):
@@ -207,7 +289,7 @@ def lineage_patient(patient_id: str):
   samp_ids = {s["sample_id"] for s in samps}
   bns = [b for b in bins if b.get("sample_id") in samp_ids]
   bin_ids = {b["bin_id"] for b in bns}
-  isos = [i for i in isolates if i.get("linked_bins") and any(b in bin_ids for b in i.get("linked_bins"))]
+  isos = [i for i in isolates if _iso_links_any(i, bin_ids)]
   return {"patient": p, "samples": samps, "bins": bns, "isolates": isos}
 
 @app.get("/lineage/sample/{sample_id}")
@@ -217,7 +299,7 @@ def lineage_sample(sample_id: str):
     raise HTTPException(status_code=404, detail="sample not found")
   bns = [b for b in bins if b.get("sample_id") == sample_id]
   bin_ids = {b["bin_id"] for b in bns}
-  isos = [i for i in isolates if i.get("linked_bins") and any(b in bin_ids for b in i.get("linked_bins"))]
+  isos = [i for i in isolates if _iso_links_any(i, bin_ids)]
   return {"sample": s, "bins": bns, "isolates": isos}
 
 # Improved search with debugging

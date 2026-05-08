@@ -395,6 +395,28 @@ TAX_TABLE_HTML_PATH = ALEX_PUBLIC_HTML_DIR / "tax-table.html"
 TREEMAP_HTML_PATH = ALEX_PUBLIC_HTML_DIR / "protect-isolate-treemap.html"
 LOGO_BANNER_PATH = ALEX_PUBLIC_HTML_DIR / "logo-banner.png"
 
+# ARPA-H funding acknowledgment, required on all PROTECT-affiliated pages.
+ARPA_H_FOOTER_HTML = (
+    '<footer style="padding:10px 16px;border-top:1px solid #e5e7eb;'
+    'background:#fafafa;color:#6b7280;font-size:11px;line-height:1.5;'
+    'text-align:center;font-family:system-ui,sans-serif;">'
+    'This research was funded, in part, by the Advanced Research Projects '
+    'Agency for Health (ARPA-H) under award #1AY2AX000051. The views and '
+    'conclusions contained in this site are those of the authors and should '
+    'not be interpreted as representing the official policies, either '
+    'expressed or implied, of the U.S. Government.'
+    '</footer>'
+)
+
+
+def _inject_arpa_h_footer(html: str) -> str:
+    """Insert the ARPA-H funding footer just before </body>, or append it
+    if no </body> tag is present."""
+    needle = "</body>"
+    if needle in html:
+        return html.replace(needle, ARPA_H_FOOTER_HTML + needle, 1)
+    return html + ARPA_H_FOOTER_HTML
+
 # Validate taxonomy paths at startup
 def _validate_taxonomy_paths():
     """Validate that taxonomy file paths exist and are accessible."""
@@ -569,7 +591,9 @@ def get_taxonomy_table():
             'src="logo-banner.png"',
             'src="/asma/api/taxonomy/logo"'
         )
-        
+
+        html_content = _inject_arpa_h_footer(html_content)
+
         return Response(
             content=html_content,
             media_type="text/html",
@@ -597,17 +621,28 @@ def get_taxonomy_table():
 def get_taxonomy_treemap():
     """
     Serve protect-isolate-treemap.html viewer for isolate treemap visualization.
-    Returns HTML file from Alex's directory.
+    Reads HTML file from Alex's directory and injects the ARPA-H funding footer.
     """
     if not TREEMAP_HTML_PATH.exists():
         raise HTTPException(
             status_code=404,
             detail=f"protect-isolate-treemap.html not found at {TREEMAP_HTML_PATH}"
         )
-    
+
+    if not TREEMAP_HTML_PATH.is_file():
+        raise HTTPException(
+            status_code=404,
+            detail=f"protect-isolate-treemap.html path exists but is not a file: {TREEMAP_HTML_PATH}"
+        )
+
     try:
-        return FileResponse(
-            path=str(TREEMAP_HTML_PATH),
+        with open(TREEMAP_HTML_PATH, "r", encoding="utf-8") as f:
+            html_content = f.read()
+
+        html_content = _inject_arpa_h_footer(html_content)
+
+        return Response(
+            content=html_content,
             media_type="text/html",
             headers={
                 "Cache-Control": "public, max-age=3600"
@@ -617,6 +652,11 @@ def get_taxonomy_treemap():
         raise HTTPException(
             status_code=403,
             detail=f"Permission denied reading {TREEMAP_HTML_PATH}"
+        )
+    except UnicodeDecodeError:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error decoding protect-isolate-treemap.html: file is not valid UTF-8"
         )
     except Exception as e:
         raise HTTPException(

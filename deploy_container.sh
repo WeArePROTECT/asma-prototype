@@ -25,9 +25,9 @@ echo "Starting container with required volume mounts and environment variables..
 podman run -d \
   --name "$CONTAINER_NAME" \
   -p "${PORT}:5000" \
-  -v /opt/shared/spencerlong/asma-prototype/demo_data:/app/demo_data:ro \
+  -v /opt/shared/spencerlong/asma-prototype/real_data:/app/real_data:ro \
   -v /usr2/people/alex.styer/public_html:/app/alex_public_html:ro \
-  -e ASMA_DATA_DIR=/app/demo_data \
+  -e ASMA_DATA_DIR=/app/real_data \
   -e ALEX_PUBLIC_HTML_DIR=/app/alex_public_html \
   --restart unless-stopped \
   "$IMAGE_NAME"

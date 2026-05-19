@@ -5,9 +5,9 @@ services:
     container_name: asma-proto
     network_mode: host                       # <-- avoids CNI/ports issues
     volumes:
-      - /opt/shared/${USER}/asma-prototype/demo_data:/app/demo_data
+      - /opt/shared/${USER}/asma-prototype/real_data:/app/real_data
       - /usr2/people/alex.styer/public_html:/app/alex_public_html:ro
     environment:
-      - ASMA_DATA_DIR=/app/demo_data
+      - ASMA_DATA_DIR=/app/real_data
       - ALEX_PUBLIC_HTML_DIR=/app/alex_public_html
     restart: unless-stopped

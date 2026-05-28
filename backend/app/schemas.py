@@ -62,7 +62,7 @@ class Patient(BaseModel):
     model_config = ConfigDict(populate_by_name=True, extra="ignore")
 
     patient_id: str
-    age: Optional[float] = None
+    lung_function_age_years: Optional[float] = None
     sex: Optional[str] = "Unknown"
     condition: Optional[str] = "Unknown"
     cohort: Optional[str] = "Unknown"
@@ -92,7 +92,7 @@ class Patient(BaseModel):
         return str(v).strip()
 
     @field_validator(
-        "age", "fev1_pp", "fev1_l", "fvc_pp", "fvc_l",
+        "lung_function_age_years", "fev1_pp", "fev1_l", "fvc_pp", "fvc_l",
         "fev1_fvc_ratio", "bmi", "weight_kg", "ht_cm",
         mode="before",
     )

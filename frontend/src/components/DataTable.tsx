@@ -84,12 +84,12 @@ export default function DataTable({
     
     // Apply strict entity-specific filtering to prevent cross-contamination
     if (entity === "patients") {
-      entityFilteredRows = entityFilteredRows.filter(row => 
-        row.patient_id && 
-        !row.sample_id && 
-        !row.bin_id && 
+      entityFilteredRows = entityFilteredRows.filter(row =>
+        row.patient_id &&
+        !row.sample_id &&
+        !row.bin_id &&
         !row.isolate_id &&
-        row.age !== undefined &&
+        row.lung_function_age_years !== undefined &&
         row.sex !== undefined &&
         row.condition !== undefined &&
         row.cohort !== undefined
@@ -129,7 +129,7 @@ export default function DataTable({
         if (entity === "patients") {
           return (
             toStr(row.patient_id).toLowerCase().includes(searchLower) ||
-            toStr(row.age).toLowerCase().includes(searchLower) ||
+            toStr(row.lung_function_age_years).toLowerCase().includes(searchLower) ||
             toStr(row.sex).toLowerCase().includes(searchLower) ||
             toStr(row.condition).toLowerCase().includes(searchLower) ||
             toStr(row.cohort).toLowerCase().includes(searchLower)
@@ -171,7 +171,7 @@ export default function DataTable({
     const entityColumns = {
       patients: [
         { key: "patient_id", title: "Patient ID", width: 120 },
-        { key: "age", title: "Age", width: 80 },
+        { key: "lung_function_age_years", title: "Lung Function Age (Years)", width: 200 },
         { key: "sex", title: "Sex", width: 80 },
         { key: "condition", title: "Condition", width: 120 },
         { key: "cohort", title: "Cohort", width: 100 },

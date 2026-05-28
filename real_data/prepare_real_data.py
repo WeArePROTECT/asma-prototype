@@ -230,9 +230,9 @@ for _, row in patient_src.iterrows():
     row_id = _safe_str(raw.get("patient_id"), default=f"row_{_}")
     try:
         p = Patient(
-            patient_id          = raw.get("patient_id"),
-            age                 = raw.get("lung_function_age_years"),
-            sex                 = raw.get("sex_at_birth"),
+            patient_id              = raw.get("patient_id"),
+            lung_function_age_years = raw.get("lung_function_age_years"),
+            sex                     = raw.get("sex_at_birth"),
             condition           = raw.get("diagnosis"),
             cohort              = raw.get("patient_population"),
             fev1_pp             = raw.get("fev1_pp"),

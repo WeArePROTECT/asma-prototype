@@ -126,7 +126,7 @@ export default function LineageView({ lineage, entity, onClose }: Props) {
                   <div className="font-semibold">Patient</div>
                   <div className="text-sm text-gray-600">{lineage.patient?.patient_id}</div>
                   <div className="text-xs text-gray-500 mt-1">
-                    {lineage.patient?.condition} • {lineage.patient?.age} years
+                    {lineage.patient?.condition} • Lung Function Age {lineage.patient?.lung_function_age_years} yrs
                   </div>
                 </Card>
                 <ArrowRightOutlined className="text-2xl text-gray-400" />
@@ -181,7 +181,7 @@ export default function LineageView({ lineage, entity, onClose }: Props) {
               {isPatient && lineage.patient && (
                 <>
                   <Descriptions.Item label="Patient ID">{lineage.patient.patient_id}</Descriptions.Item>
-                  <Descriptions.Item label="Age">{lineage.patient.age} years</Descriptions.Item>
+                  <Descriptions.Item label="Lung Function Age (Years)">{lineage.patient.lung_function_age_years}</Descriptions.Item>
                   <Descriptions.Item label="Condition">
                     <Tag color="blue">{lineage.patient.condition}</Tag>
                   </Descriptions.Item>
